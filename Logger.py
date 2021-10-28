@@ -30,5 +30,7 @@ def create_logger(log_folder, log_name):
     consoleHandler.setLevel(logging.INFO)
     consoleHandler.setFormatter(formatter)
     my_logger.addHandler(consoleHandler)
+    if len(my_logger.handlers) > 1:# 用來不重覆執行log 
+        my_logger.handlers.pop()
 
     return my_logger

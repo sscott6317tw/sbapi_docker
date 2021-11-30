@@ -10,7 +10,6 @@ filename = "{:%Y-%m-%d}".format(datetime.now()) + '.log'  # 設定檔名
 
 def create_logger(log_folder, log_name):
     # config
-    print('123')
     logging.captureWarnings(True)  # 捕捉 py waring message
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     my_logger = logging.getLogger(log_name)  # 捕捉 py waring message

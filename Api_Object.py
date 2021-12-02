@@ -37,8 +37,10 @@ class Login(Common):#取得驗證碼邏輯
             central_password=central_password)# 初始 login為 None 一定先登入
             return  mobile_api
         else: #都是桌機
-            desktop_api = Desktop_Api(device=device,user=user,url=url)
-            desktop_api.desktop_login(central_account=central_account,
+            desktop_api = Desktop_Api(device=device,user=user,url=url,client = client)
+
+
+            desktop_api.desktop_login(central_account=central_account ,
             central_password=central_password)
             return  desktop_api
 
@@ -172,7 +174,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request num'].append(self.count)
         self.stress_dict['request url'].append(request_data)
         start = time.clock()
-        print(self.headers)
+        #print(self.headers)
         r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
         rquest_url = r.url
         self.stress_dict['request url'].append(rquest_url)
@@ -327,6 +329,31 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.error('mobile balance Api Fali')
             return False
 
+    def UpdateOdds (self):# /Odds/UpdateOdds
+        
+        data = '{"GameId":1,"DateType":"l","BetTypeClass":"OU","Gametype":0}'
+        #self.headers['Referer'] = self.url
+        self.headers['Content-Type'] = 'application/json;charset-UTF-8'#不用這個 會失敗
+        r = self.stress_request_post(request_data= data, func_url = '/Odds/UpdateOdds' )
+
+        #r = self.client_session.post(self.url  + '/balance/GetAccountInfo', data=data,headers=self.headers)
+       
+        try:
+            repspone_json = r.json()
+            ErrorCode = repspone_json['ErrorCode']
+            HKey = repspone_json['HKey']
+            self.stress_dict['response'].append('ErrorCode: %s, HKey: %s'%(ErrorCode,HKey))
+
+            logger.info('ErrorCode: %s, HKey: %s'%(ErrorCode,HKey) ) 
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('UpdateOdds Api Fali')
+
+            return False
+
+
     '''
     type 帶 test 就 可以 忽略 testing 比賽  ,bet_type 可帶 其他(ex: parlay)
     '''
@@ -343,7 +370,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             
             try:# athen 和部分api的 ,走 一個邏輯
                 if self.login_type  == 'athena' or self.api_site =='web':# athena  
-                    r = self.client_session.post(self.url  + '/Odds/ShowAllOdds',data=data,headers=self.headers)
+                    r = self.stress_request_post(request_data= data, func_url = '/Odds/ShowAllOdds' )
+
+                    #r = self.client_session.post(self.url  + '/Odds/ShowAllOdds',data=data,headers=self.headers)
                     repspone_json = r.json()
                 else:
                     if 'Authorization' not in list(self.headers.keys()):
@@ -357,6 +386,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json)   
             except:
+                self.stress_dict['response'].append('%s'%r.text )
                 logger.info('mobile ShowAllOdds Api Fali')
                 return False
             
@@ -397,6 +427,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         len_matchid = len(self.MatchId)
         #logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
+        self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
         
         if len_matchid < 3:
             logger.info('長度小於3 無法串票')
@@ -804,7 +835,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
 
 class Desktop_Api(Login):    
-    def __init__(self,device="",user='',url= ''):
+    def __init__(self,client,device="",user='',url= ''):
         super().__init__(device)
         self.login = None
         self.user = user
@@ -812,6 +843,11 @@ class Desktop_Api(Login):
         self.login_type = ''# api site
         if 'athena' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
+
+        if client == '':
+            self.client_session = self.session
+        else:
+            self.client_session = client
     
     def desktop_login(self,central_account='',central_password=''):# PC端 login街口 邏輯
         '''加密邏輯 呼叫'''
@@ -836,7 +872,7 @@ class Desktop_Api(Login):
         else:# api site
             if 'onelogin' not in self.url:# 多幫忙檢查 ,需要帶 onelogin
                 self.url = self.url + '/onelogin.aspx'
-            r = self.client_session.get(self.url  ,headers=self.headers)# 需先拿 session url
+            r = self.client_session.get(self.url  ,headers= self.headers)# 需先拿 session url
             
             self.url  = r.url.split('/onelogin.aspx')[0]# 回復的url 需再拿掉 onelogin.aspx . 再去打 despoist login
             logger.info('onelogin 需 先拿session url: %s'%self.url )
@@ -934,26 +970,6 @@ class Desktop_Api(Login):
 
 
 #In[]
-api = Login(sec_times = 1 ,stop_times = 1 ).login_api(device='mobile', user= 'twqa09',
- url = 'http://qasb2.athena000.com:50006/',
- central_account='',central_password='' )
-
-
-#In[]
-#api.get_contirbutetor()
-
-
-#In[]
-
-
-api.threads(func_name_list = [   api.balance ] )
-
-
-
-#In[]
-
-print (api.stress_dict)
-
 
 
 

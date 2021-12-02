@@ -97,8 +97,3 @@ class Common:
         s = set(list_)
         return(list(s))
 
-
-#In[]
-common_test = Common()
-print(common_test.Odds_Tran('0.73',odds_type='CN'))
-# %%

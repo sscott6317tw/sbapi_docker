@@ -172,7 +172,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.count = self.count + 1
         self.stress_dict['request num'].append(self.count)
         self.stress_dict['request url'].append(request_data)
-        start = time.clock()
+        start = time.perf_counter()
         #print(self.headers)
         r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
         rquest_url = r.url
@@ -379,7 +379,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.bet_type = bet_type
         self.gameid = self.game_mapping(self.sport)# 後面 get market 和 betting 就不用在多傳 gameid 參數了, 統一在這宣告
         for market in market:
-            data = 'GameId=%s&DateType=%s&BetTypeClass=%s&Gametype=1'%(self.gameid  ,market,self.bet_type)# 先寫死cricket, 之後優化
+            data = 'GameId=%s&DateType=%s&BetTypeClass=%s&Gametype=0'%(self.gameid  ,market,self.bet_type)# 先寫死cricket, 之後優化
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             
             try:# athen 和部分api的 ,走 一個邏輯
@@ -438,7 +438,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 if key not in filter:
                     del self.MatchId[key]
         len_matchid = len(self.MatchId)
-        logger.info('self.MatchId: %s'%self.MatchId)
+        #logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
         self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
         
@@ -462,8 +462,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         for index,match_id in enumerate(self.MatchId.keys()):
             self.MarketId = {}
             market = self.MatchId[match_id]['Market']
-            logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]   ))
-            data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":1}
+            logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]))
+            data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":0}
             try:
                 r = self.client_session.post(self.url  + '/Odds/GetMarket',data=data,headers=self.headers)
                 repspone_json = r.json()
@@ -505,7 +505,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.Match_dict[index] = Market_value
                 if index == int(parlay_len) - 1:
                     logger.info('串%s場即可'%parlay_len)
-                    logger.info(self.MarketId)
                     break
 
 
@@ -605,7 +604,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             order_value['TransId_Cash'] = Itemdict['TransId_Cash']
             order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
-            
+
+            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min'] ):
+                return Itemdict['Message']
+            else:
+                pass
+                
             try:
                 order_value['DisplayOdds'] = Itemdict['DisplayOdds']
                 
@@ -617,9 +621,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 return True
             except:
                 return False
-            
-
-        
+                   
         
     '''
     already_list 是有做過的bettype , 拿來 驗證 做過的bettype, 做 random bettype 5次 
@@ -651,10 +653,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     retry_count = 0
                     while True:
                         ran_index = random.randint(0, len(Match_key_list) -1  )
-                        Ran_Match_id =   Match_key_list[ran_index]# 隨機取出 odds id
+                        Ran_Match_id =  Match_key_list[ran_index]# 隨機取出 odds id
                         logger.info('Ran_Match_id: %s'%Ran_Match_id)
                     
                         BetTypeId = Match[Ran_Match_id]['BetTypeId']
+
                         if BetTypeId not in already_list:
                             logger.info('BetTypeId: %s 沒有投注過 ,成立'%BetTypeId)
                             break
@@ -700,7 +703,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         if  self.gameid != 50:# cricket 的不用轉 
                             if BetTypeId not in [5, 15]:#  5: Ft 1x2 , 15: 1H 1x2 他們是 屬於Dec Odds
-                                odds = self.Odds_Tran(odds)
+                                odds = self.Odds_Tran(odds,odds_type=self.odds_type)
                                 logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
 
                     try:
@@ -834,10 +837,17 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             else:# single bet
                 r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
-
-          
             
-            return self.Betting_response(response=r, times=times)
+                retry = 0
+                while retry < 2: #預計做兩次 retry，修改完 odds，可能 Stake 大小也會有問題
+                    betting_response = self.Betting_response(response=r, times=times)
+                    if betting_response != True and betting_response != False:
+                        r = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                        retry += 1
+                    else:
+                        break
+
+            return betting_response
 
             #logger.info('repspone_json: %s'%repspone_json)   
 
@@ -845,8 +855,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('mobile DoplaceBet Api Fail: %s'%e)
             return False
 
-
-
+    def retry_betting(self,error_code,post_data,bet_stake):
+        if "changed" in error_code:
+            old_odds = re.findall('Odds has changed from (.+) to',error_code)[0]
+            new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0]
+            new_post_data = post_data.replace(old_odds,new_odds)
+        elif "less than min stake or more than max stake" in error_code:
+            new_bet_stake = bet_stake + 1
+            new_post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
+        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = new_post_data.encode(),headers=self.headers)
+        return r
 
 class Desktop_Api(Login):    
     def __init__(self,client="",device="",user='',url= ''):

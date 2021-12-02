@@ -8,7 +8,7 @@ from PIL import Image
 from numpy import False_
 import pytesseract,os,time
 from  Logger import create_logger 
-import pathlib
+import pathlib,re
 from Common import Common
 
 from urllib.parse import urlparse
@@ -164,8 +164,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.client_session = client
         self.count = 0 #用來跌加  請求個數
         self.stress_dict = defaultdict(list)# 用來 存放壓力測試 街口的 數據
-
-    
+        self.odds_type = 'Dec' #先預設為空，避免沒有執行 Odds type Change 就下注
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
     '''
@@ -179,7 +178,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         rquest_url = r.url
         self.stress_dict['request url'].append(rquest_url)
 
-        request_time =  '{0:.4f} s'.format(time.clock() - start) # 該次 請求的url 時間
+        request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
         logger.info("Request completed in %s s"%request_time )
         self.stress_dict['request time'].append(request_time)
 
@@ -269,7 +268,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 #logger.info('self.login_session: %s'%self.login_session)
                 return True
             except Exception as e:
-                logger.info('Login Api Fali: %s'%e)
+                logger.info('Login Api Fail: %s'%e)
                 return False
         
         else: #api site登入
@@ -320,7 +319,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         except:
             logger.error('response :%s'%r.text )
             self.stress_dict['response'].append(r.text) 
-            logger.error('get_contirbutetor Api Fali')
+            logger.error('get_contirbutetor Api Fail')
             return False
 
     def statement_settle(self):
@@ -332,11 +331,28 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
 
             logger.info('repspone_json: %s '%(repspone_json ) )
-            return True
         except:
             logger.error('response :%s'%r.text )
             self.stress_dict['response'].append(r.text) 
             logger.error('statement_settle Api Fali')
+            return False
+
+
+    def set_odds_type(self,odds_type='MY'):# /setting/SaveUserProfile
+        self.odds_type = odds_type
+        odds_type_dict = {'Dec' : '1','CN' : '2','Indo' : '3','MY' : '4','US' : '5'}
+        data = 'DefaultLanguage=en-US&OddsType={odds_type}&BetStake=0&BetterOdds=false&oddssort=2&inpbetStake=0'.format(odds_type=odds_type_dict[odds_type])
+        r = self.client_session.post(self.url  + '/setting/SaveUserProfile',data=data,headers=self.headers)
+        try:
+            repspone_json = r.json()
+            ErrorCode = repspone_json['ErrorCode']
+            self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
+            logger.info('ErrorCode: %s '%(ErrorCode ) )
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('Setting Odds Type Api Fail')
             return False
 
     def statement_running(self):
@@ -360,6 +376,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             return False
         
 
+
     def balance(self):# /balance/GetAccountInfo
         
         data = 'localtime=8'
@@ -380,7 +397,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         except:
             logger.error('url :%s'%r.url )
             self.stress_dict['response'].append(r.text)
-            logger.error('mobile balance Api Fali')
+            logger.error('mobile balance Api Fail')
             return False
 
     def UpdateOdds (self):# /Odds/UpdateOdds
@@ -440,8 +457,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json)   
             except:
-                self.stress_dict['response'].append('%s'%r.text )
-                logger.info('mobile ShowAllOdds Api Fali')
+                logger.info('mobile ShowAllOdds Api Fail')
                 return False
             
             try:
@@ -479,7 +495,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 if key not in filter:
                     del self.MatchId[key]
         len_matchid = len(self.MatchId)
-        #logger.info('self.MatchId: %s'%self.MatchId)
+        logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
         self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
         
@@ -510,7 +526,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json) 
             except:
-                logger.info('mobile GetMarket Api Fali')
+                logger.info('mobile GetMarket Api Fail')
                 continue
             try:
                 # 回傳的 資料結構不同
@@ -546,6 +562,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.Match_dict[index] = Market_value
                 if index == int(parlay_len) - 1:
                     logger.info('串%s場即可'%parlay_len)
+                    logger.info(self.MarketId)
                     break
 
 
@@ -867,7 +884,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
             #self.headers['Cookie'] = 'ASP.NET_SessionId='+ self.login_session[user]
             post_data =  data_str
-
+            
             if 'parlay' in  self.bet_type:
                 r = self.client_session.post(self.url  + '/BetParlay/DoplaceBet',data = post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
@@ -882,19 +899,23 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #logger.info('repspone_json: %s'%repspone_json)   
 
         except Exception as e:
-            logger.info('mobile DoplaceBet Api Fali: %s'%e)
+            logger.info('mobile DoplaceBet Api Fail: %s'%e)
             return False
 
 
 
 
 class Desktop_Api(Login):    
-    def __init__(self,client,device="",user='',url= ''):
+    def __init__(self,client="",device="",user='',url= ''):
         super().__init__(device)
         self.login = None
         self.user = user
         self.url = url
         self.login_type = ''# api site
+        if client == '':
+            self.client_session = self.session
+        else:
+            self.client_session = client
         if 'athena' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
 
@@ -934,7 +955,6 @@ class Desktop_Api(Login):
 
             login_data = "lang=en&WebSkinType=&matchid=&leaguekey=&market=T&menutype=0&act=sports&game=&gamename=&gameid=&Otype=&HomeUrl=&deposit=&extendSessionUrl=&Link=&Sport=&Date=&SkinColor=&centralAccount={central_account}&centralPassword={central_password}&txtUserName={user}&txtPasswd=1q2w3e4r&token=&TSID=&txtValidCode=&hidubmit=YES".format(central_account=central_account,central_password=central_password,user=self.user )
 
-
         self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         self.headers['X-Requested-With'] =  'XMLHttpRequest'
         r = self.client_session.post(self.url  + '/DepositProcessLogin',data=login_data,headers=self.headers)
@@ -944,7 +964,7 @@ class Desktop_Api(Login):
             repspone_json = r.json()
             logger.info('response: %s'%repspone_json)
             if repspone_json['ShowErrorMsg'] == 'The validation code has expired.' or repspone_json['ErrorCode'] !='':
-                logger.info('登入 Fali')
+                logger.info('登入 Fail')
                 return False
 
             reponse_url = r.json()['url']# 取得登入後 轉導url
@@ -969,13 +989,13 @@ class Desktop_Api(Login):
 
                 r = self.client_session.get(reponse_url,headers=self.headers )
             self.login = 'login ready'
+            
             return True
 
         except:
-            logger.info('登入 Fali')
+            logger.info('登入 Fail')
             return False
-    
-    
+
     def balance(self):# /NewIndex/GetWalletBalance
         balance_info_data = 'TZone=8'
         self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
@@ -989,7 +1009,7 @@ class Desktop_Api(Login):
             logger.info('response: %s'%repspone_json)
             return True
         except:
-            logger.info('desktop balance Api Fali')
+            logger.info('desktop balance Api Fail')
             return False
     
     def hm_sport(self):# /NewIndex/GetWalletBalance
@@ -1000,7 +1020,7 @@ class Desktop_Api(Login):
         logger.info('hm_url: %s'%self.hm_url)
 
         logger.info('header: %s'%self.headers)
-        r = self.client_session.get( self.hm_url + '/Sports',headers=self.headers)
+        r = self.client_session.get( self.hm_url + '/NewIndex/GetWalletBalance',headers=self.headers)
         cookie_session = self.client_session.cookies.get_dict()
         logger.info('cookie_session: %s'%cookie_session)
         try:
@@ -1008,8 +1028,43 @@ class Desktop_Api(Login):
             logger.info('response: %s'%repspone_json)
             return True
         except:
-            logger.info('desktop balance Api Fali')
+            logger.info('desktop balance Api Fail')
             return False
+
+    def show_sports(self):# /Sports/
+
+        #用於抓取登入後的 hm session id
+        self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
+        post_url = self.member_url + '/EntryIndex/OpenSports'
+        logger.info('post_url: %s'%post_url)
+        open_sports = self.session.get(post_url,headers = self.headers)
+        cookie_session = self.session.cookies.get_dict()
+        
+        if self.login_type == 'athena':
+            NET_SessionId = cookie_session['ASP.NET_SessionId']
+        
+            logger.info('NET_SessionId: %s'%NET_SessionId)
+            self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
+            self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
+            self.hm_url = self.member_url.replace('member','hm')
+
+            post_url = self.hm_url  + '/Sports/'
+            logger.info('post_url: %s'%post_url)
+
+            logger.info('header: %s'%self.headers)
+            r = self.client_session.get( post_url,headers=self.headers)
+            try:
+                sucess_data = re.findall("<html.+>",r.text)[0]
+                return r.text
+            except Exception as e:
+                logger.info('desktop balance Api Fail : %s'%str(e))
+                return False
+        else: #由於 api site opensports 打出後，會自動回傳 Sport API，不須像 Athena 再去打，所以直接判斷回傳是否正確
+            try:
+                sucess_data = re.findall("<html.+>",open_sports.text)[0]
+                return sucess_data
+            except Exception as e:
+                return open_sports.text
 
     def check_whats_new_picture(self): #確認圖片是否會在網頁圖片 List 裡
         print(self.url)
@@ -1022,8 +1077,8 @@ class Desktop_Api(Login):
         print(r.text)
 
 
-
+'''
 #In[]
 
 
-
+'''

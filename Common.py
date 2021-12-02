@@ -1,3 +1,4 @@
+#In[]
 import requests
 from selenium import webdriver
 import threading,time
@@ -6,7 +7,7 @@ class Common:
     '''
     sec_times: 併發, stop_times: 幾秒後結束
     '''
-    def __init__(self,sec_times,stop_times):
+    def __init__(self,sec_times='',stop_times=''):
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             
@@ -58,11 +59,31 @@ class Common:
         return game_dict[sport]['gameid']
 
 
-    def Odds_Tran(self, odds):# Marlay 轉 Dec Odds  , 在betting 時會用
-        if float(odds) < 0:# 小於0, 跟china一樣, 只是多加1
-            confirm_odds = round(abs(  int(1/ float(odds)*100))+100)   /100  
-        else:# odds +1 
-            confirm_odds = round(float(odds) * 100 + 100) / 100
+    def Odds_Tran(self, odds,odds_type='Dec'):# Marlay 轉 Dec Odds  , 在betting 時會用
+        if odds_type == 'Dec':
+            if float(odds) < 0:# 小於0, 跟china一樣, 只是多加1
+                confirm_odds = round(abs(int(1/ float(odds)*100))+100)/100  
+            else:# odds+1
+                confirm_odds = round(float(odds) * 100 + 100) / 100
+        elif odds_type in ['US','Indo'] :
+            if float(odds) < 0:
+                if float(odds) >= 0.79:# 大於等於 0.79無條件進位
+                    confirm_odds = int(-1/ float(odds)*100+ 1)/100
+                else:# 跟china一樣
+                    confirm_odds = abs(int(1/ float(odds)*100)/100)
+            else:# 大於 0
+                if float(odds) <= 0.79:# 小於等於 0.79無條件進位
+                    confirm_odds = (int(-1/ float(odds)*100)-1)/100
+                else:# -1去除
+                    confirm_odds = int(-1/ float(odds)*100)/100
+            if odds_type == 'US':
+                confirm_odds = round(confirm_odds * 100,2)
+        elif odds_type == 'CN':
+            if float(odds) < 0:# 小於0 , 需用 1去除 
+                confirm_odds = abs(int(1/ float(odds)*100)/100)
+            else:# 大於0 就是 一樣的odds
+                confirm_odds = float(odds)
+
         return confirm_odds
 
 
@@ -75,3 +96,4 @@ class Common:
         #print(list_)
         s = set(list_)
         return(list(s))
+

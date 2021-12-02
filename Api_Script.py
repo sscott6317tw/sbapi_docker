@@ -8,6 +8,7 @@ import Api_Object
 
 
 #In[]
+import Api_Object
 url =  'http://qasb1.athena000.com:50039/' #'http://athena000smart.playthefun.com:3021/' 
 
 user = 'autoqa11'

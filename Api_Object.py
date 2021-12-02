@@ -172,7 +172,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     def stress_request_post(self, request_data ,func_url  ): 
         self.count = self.count + 1
         self.stress_dict['request num'].append(self.count)
-        self.stress_dict['request url'].append(request_data)
+        self.stress_dict['request data'].append(request_data)
         start = time.clock()
         #print(self.headers)
         r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
@@ -181,7 +181,26 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
         request_time =  '{0:.4f} s'.format(time.clock() - start) # 該次 請求的url 時間
         logger.info("Request completed in %s s"%request_time )
-        self.stress_dict['request completed'].append(request_time)
+        self.stress_dict['request time'].append(request_time)
+
+        return r
+
+    '''
+    共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
+    '''
+    def stress_request_get(self, func_url ,  request_data=''  ): 
+        self.count = self.count + 1
+        self.stress_dict['request num'].append(self.count)
+        self.stress_dict['request data'].append(request_data)
+        start = time.clock()
+        #print(self.headers)
+        r = self.client_session.get(self.url  + func_url ,headers=self.headers)
+        rquest_url = r.url
+        self.stress_dict['request url'].append(rquest_url)
+
+        request_time =  '{0:.4f} s'.format(time.clock() - start) # 該次 請求的url 時間
+        logger.info("Request completed in %s s"%request_time )
+        self.stress_dict['request time'].append(request_time)
 
         return r
 
@@ -304,6 +323,41 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.error('get_contirbutetor Api Fali')
             return False
 
+    def statement_settle(self):
+        r = self.stress_request_get( func_url = '/Statement/GetDBetList_ch?fdate=12%2F02%2F2021&datatype=8&isReport=false' )
+        try:
+            repspone_json = r.json()
+            print(repspone_json)
+            #ErrorCode = repspone_json['ErrorCode']
+            #self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
+
+            logger.info('repspone_json: %s '%(repspone_json ) )
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('statement_settle Api Fali')
+            return False
+
+    def statement_running(self):
+        r = self.stress_request_get( func_url = '/Running/GetRunningOVR?RunningType=E' )
+        try:
+            datatype = r.json()['datatype']
+            ticketcount = r.json()['ticketcount']
+
+
+            logger.info('datatype: %s , ticketcount: %s '%(datatype, ticketcount ) )
+            #print(repspone_json)
+            #ErrorCode = repspone_json['ErrorCode']
+            #self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
+
+            
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('statement_running Api Fali')
+            return False
         
 
     def balance(self):# /balance/GetAccountInfo

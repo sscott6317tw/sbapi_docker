@@ -10,8 +10,10 @@ import pytesseract,os,time
 from  Logger import create_logger 
 import pathlib,re
 from Common import Common
-
+import urllib3
 from urllib.parse import urlparse
+urllib3.disable_warnings()
+
 logger = create_logger(r"\AutoTest", 'test')
 
 #In[]
@@ -27,14 +29,17 @@ class Login(Common):#取得驗證碼邏輯
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
     
     
-    def login_api(self, device,user,url,client='',central_account='',central_password=''):
+    def login_api(self, device,user,url,client='',central_account='',central_password='',site=''):
         '''devive 為Pc 才會去叫 webdriver ,要取驗證碼'''
         if device in ['mobile','app']:
             mobile_api = Mobile_Api(device='app',  password =  '1q2w3e4r', url=url ,client = client,
-            sec_times=self.sec_times, stop_times=self.stop_times )
+            sec_times=self.sec_times, stop_times=self.stop_times,site=site )
 
-            mobile_api.mobile_login(user=user,central_account=central_account,
+            login_rseult = mobile_api.mobile_login(user=user,central_account=central_account,
             central_password=central_password)# 初始 login為 None 一定先登入
+            if login_rseult is False:
+                return False
+            
             return  mobile_api
         else: #都是桌機
             desktop_api = Desktop_Api(device=device,user=user,url=url,client = client)
@@ -147,7 +152,7 @@ class Login(Common):#取得驗證碼邏輯
 
 #login_type 預設空字串, 是使用 athena 登入 
 class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
-    def __init__(self,client,device="",url='',password='',sec_times='',stop_times=''):
+    def __init__(self,client,device="",url='',password='',sec_times='',stop_times='',site=''):
         super().__init__(device,sec_times,stop_times) 
         self.login_session = {}# key 為 user ,value 放 NET_SessionId
         self.url = url
@@ -165,6 +170,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.count = 0 #用來跌加  請求個數
         self.stress_dict = defaultdict(list)# 用來 存放壓力測試 街口的 數據
         self.odds_type = 'Dec' #先預設為空，避免沒有執行 Odds type Change 就下注
+        self.site = site
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
     '''
@@ -172,11 +178,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.count = self.count + 1
         self.stress_dict['request num'].append(self.count)
         self.stress_dict['request data'].append(request_data)
-        start = time.clock()
+        start = time.perf_counter()
         #print(self.headers)
         r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
-        rquest_url = r.url
-        self.stress_dict['request url'].append(rquest_url)
+        #self.url = r.url
+        self.stress_dict['request url'].append(self.url  + func_url)
 
         request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
         logger.info("Request completed in %s s"%request_time )
@@ -191,13 +197,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.count = self.count + 1
         self.stress_dict['request num'].append(self.count)
         self.stress_dict['request data'].append(request_data)
-        start = time.clock()
+        start = time.perf_counter()
         #print(self.headers)
         r = self.client_session.get(self.url  + func_url ,headers=self.headers)
-        rquest_url = r.url
-        self.stress_dict['request url'].append(rquest_url)
+        #self.url = r.url
+        self.stress_dict['request url'].append(self.url  + func_url)
 
-        request_time =  '{0:.4f} s'.format(time.clock() - start) # 該次 請求的url 時間
+        request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
         logger.info("Request completed in %s s"%request_time )
         self.stress_dict['request time'].append(request_time)
 
@@ -288,12 +294,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] = 'XMLHttpRequest'
             self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
             
-            r =  self.client_session.get(api_login_url, headers=self.headers)
+            r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
             
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
             logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
             if 'errorcode' in self.url:
-                return 'Login Fail'
+                return False
+            elif 'Message' in self.url:
+                return False
             
             '''
             api site 不是每個 登入後的都會帶 session url ,ex: bbin
@@ -428,7 +436,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     '''
     type 帶 test 就 可以 忽略 testing 比賽  ,bet_type 可帶 其他(ex: parlay)
     '''
-    def ShowAllOdds(self,type='',market='e',filter='',sport='Soccer',bet_type='OU'):# 取得 MatchId 傳給 GetMarket , 還有取得 TeamN 回傳給 DoplaceBet  的 home/away
+    def ShowAllOdds(self,type='',market=['e'],filter='',sport='Soccer',bet_type='OU'):# 取得 MatchId 傳給 GetMarket , 還有取得 TeamN 回傳給 DoplaceBet  的 home/away
         
         # e為 早盤, t為 today
         #market = 't'# 預設 today
@@ -490,12 +498,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             except Exception as e:
                 logger.error('ShowAllOdds: %s'%e)
                 return False
+        #logger.info('%s'%list(self.MatchId))
         if  filter != '' and len(filter) != 0 :# 只拿指定 的match id , 防呆 fiter如果帶空list
             for key in list(self.MatchId):
                 if key not in filter:
                     del self.MatchId[key]
         len_matchid = len(self.MatchId)
-        logger.info('self.MatchId: %s'%self.MatchId)
+        #logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
         self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
         
@@ -526,8 +535,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json) 
             except:
-                logger.info('mobile GetMarket Api Fail')
-                continue
+                logger.error('mobile GetMarket Api Fail')
+                return False
             try:
                 # 回傳的 資料結構不同
                 if self.bet_type == 'parlaymore':
@@ -562,7 +571,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.Match_dict[index] = Market_value
                 if index == int(parlay_len) - 1:
                     logger.info('串%s場即可'%parlay_len)
-                    logger.info(self.MarketId)
+                    #logger.info(self.MarketId)
                     break
 
 
@@ -655,23 +664,25 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             '''
             #  ItemList 為一個 list ,裡面 放各資訊 字典 
             '''
-            order_value = {}
+            self.order_value = {}
             Itemdict = repspone_json['Data']['ItemList'][0]# Itemdict 為一個字典
             logger.info('betting response Error Code: %s'%repspone_json['Data']['Common']['ErrorCode'])
 
-            order_value['TransId_Cash'] = Itemdict['TransId_Cash']
-            order_value['Message'] = Itemdict['Message']
+            self.order_value['TransId_Cash'] = Itemdict['TransId_Cash']
+            self.order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
-            
-            try:
-                order_value['DisplayOdds'] = Itemdict['DisplayOdds']
-                
-                BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊
-                order_value['BettypeName'] = BetRecommends['BettypeName']
-                order_value['LeagueName'] = BetRecommends['LeagueName']
+            #logger.info('betting response: %s'%repspone_json)
 
-                logger.info('order_value  : %s'%order_value)
-                return True
+            try:
+                self.order_value['DisplayOdds'] = Itemdict['DisplayOdds']
+                
+                #BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊
+                #order_value['BettypeName'] = BetRecommends['BettypeName']
+                #order_value['LeagueName'] = BetRecommends['LeagueName']
+                self.order_value['site'] = self.site
+ 
+                logger.info('order_value  : %s'%self.order_value)
+                return self.order_value
             except:
                 return False
             
@@ -759,7 +770,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             if BetTypeId not in [5, 15]:#  5: Ft 1x2 , 15: 1H 1x2 他們是 屬於Dec Odds
                                 odds = self.Odds_Tran(odds)
                                 logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
-
+                    logger.info('BetTypeId : %s'%BetTypeId)
                     try:
                         data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                         ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
@@ -807,6 +818,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                 logger.info('GetTickets OK')
                             except:
                                logger.error('Single Bet Get Ticket 有誤')
+                               return 'GetTickets False'
                             if index_key == 0:
                                 break 
 

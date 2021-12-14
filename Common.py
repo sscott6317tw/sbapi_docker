@@ -54,8 +54,12 @@ class Common:
         print('time cost',self.time_end -self.time_start,'s')
 
     def game_mapping(self, sport):# 丟sport 參數, 回傳 gameid . 給 ShowAllOdds 街口使用
-        game_dict = {'Cricket': {'gameid': 50} ,'Soccer': {'gameid': 1} , 'Basketball': {'gameid': 2}
-            }
+        game_dict = {
+            'Soccer': {'gameid': 1}, 'Basketball': {'gameid': 2}, 'Cricket': {'gameid': 50}, 'E-Sports': {'gameid': 43}, 
+            'Tennis': {'gameid': 5}, 'Volleyball': {'gameid': 6}, 'Baseball': {'gameid': 8}, 'Number Game': {'gameid': 161}, 
+            'Soccer Euro Cup': {'gameid': 197}, 'Soccer Champions Cup': {'gameid': 196}, 'Soccer Asian Cup': {'gameid': 194}, 
+            'Soccer League': {'gameid': 190}, 'Soccer World Cup': {'gameid': 192}
+        }
         return game_dict[sport]['gameid']
 
 
@@ -83,6 +87,8 @@ class Common:
                 confirm_odds = abs(int(1/ float(odds)*100)/100)
             else:# 大於0 就是 一樣的odds
                 confirm_odds = float(odds)
+        elif odds_type == 'MY':
+            confirm_odds = float(odds)
 
         return confirm_odds
 

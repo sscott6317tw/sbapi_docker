@@ -10,6 +10,7 @@ import pytesseract,os,time
 from  Logger import create_logger 
 import pathlib,re
 from Common import Common
+import csv
 
 from urllib.parse import urlparse
 logger = create_logger(r"\AutoTest", 'test')
@@ -164,7 +165,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.client_session = client
         self.count = 0 #用來跌加  請求個數
         self.stress_dict = defaultdict(list)# 用來 存放壓力測試 街口的 數據
-        self.odds_type = 'Dec' #先預設為空，避免沒有執行 Odds type Change 就下注
+        self.odds_type = 'Indo' #先預設為空，避免沒有執行 Odds type Change 就下注
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
     '''
@@ -174,13 +175,32 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request url'].append(request_data)
         start = time.perf_counter()
         #print(self.headers)
-        r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
+        r = self.client_session.post(self.url + func_url , data = request_data,headers=self.headers)
         rquest_url = r.url
         self.stress_dict['request url'].append(rquest_url)
 
         request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
         logger.info("Request completed in %s s"%request_time )
-        self.stress_dict['request completed'].append(request_time)
+        self.stress_dict['request time'].append(request_time)
+
+        return r
+
+    '''
+    共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
+    '''
+    def stress_request_get(self, func_url ,  request_data=''  ): 
+        self.count = self.count + 1
+        self.stress_dict['request num'].append(self.count)
+        self.stress_dict['request data'].append(request_data)
+        start = time.clock()
+        #print(self.headers)
+        r = self.client_session.get(self.url  + func_url ,headers=self.headers)
+        rquest_url = r.url
+        self.stress_dict['request url'].append(rquest_url)
+
+        request_time =  '{0:.4f} s'.format(time.clock() - start) # 該次 請求的url 時間
+        logger.info("Request completed in %s s"%request_time )
+        self.stress_dict['request time'].append(request_time)
 
         return r
 
@@ -303,6 +323,22 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.error('get_contirbutetor Api Fail')
             return False
 
+    def statement_settle(self):
+        r = self.stress_request_get( func_url = '/Statement/GetDBetList_ch?fdate=12%2F02%2F2021&datatype=8&isReport=false' )
+        try:
+            repspone_json = r.json()
+            print(repspone_json)
+            #ErrorCode = repspone_json['ErrorCode']
+            #self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
+
+            logger.info('repspone_json: %s '%(repspone_json ) )
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('statement_settle Api Fali')
+            return False
+
+
     def set_odds_type(self,odds_type='MY'):# /setting/SaveUserProfile
         self.odds_type = odds_type
         odds_type_dict = {'Dec' : '1','CN' : '2','Indo' : '3','MY' : '4','US' : '5'}
@@ -319,6 +355,28 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.stress_dict['response'].append(r.text) 
             logger.error('Setting Odds Type Api Fail')
             return False
+
+    def statement_running(self):
+        r = self.stress_request_get( func_url = '/Running/GetRunningOVR?RunningType=E' )
+        try:
+            datatype = r.json()['datatype']
+            ticketcount = r.json()['ticketcount']
+
+
+            logger.info('datatype: %s , ticketcount: %s '%(datatype, ticketcount ) )
+            #print(repspone_json)
+            #ErrorCode = repspone_json['ErrorCode']
+            #self.stress_dict['response'].append('ErrorCode: %s'%ErrorCode)
+
+            
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('statement_running Api Fali')
+            return False
+        
+
 
     def balance(self):# /balance/GetAccountInfo
         
@@ -435,8 +493,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 return False
         if  filter != '' and len(filter) != 0 :# 只拿指定 的match id , 防呆 fiter如果帶空list
             for key in list(self.MatchId):
-                if key not in filter:
+                if str(key) not in filter:
                     del self.MatchId[key]
+        #方便查看資料的
+        path = 'test.txt'
+        f = open(path, 'w')
+        f.write(str(self.MatchId))
+        f.close()
+        
         len_matchid = len(self.MatchId)
         #logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
@@ -459,7 +523,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         else:
             parlay_len = '1'
         self.Match_dict = {}# key 當作 index, value 存放 該match id 裡所有 的bettype(self.MarketId)
+
         for index,match_id in enumerate(self.MatchId.keys()):
+            print(match_id)
             self.MarketId = {}
             market = self.MatchId[match_id]['Market']
             logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]))
@@ -473,7 +539,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 continue
             try:
                 # 回傳的 資料結構不同
-                if self.bet_type == 'parlaymore':
+                if "more" in self.bet_type:
                     NewOdds = repspone_json['Data']['Markets']['NewOdds']# 一個list 裡面包一個長度的dict
                 else:
                     NewOdds = repspone_json['Data']['NewOdds']
@@ -516,7 +582,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('self.Match_dict 1 : %s'%len(self.Match_dict[1]))
             logger.info('self.Match_dict 2: %s'%len(self.Match_dict[2]))
 
-    def Betting_response(self,response,times):# 針對 投注 回復 做解析
+    def Betting_response(self,response,times,BetTypeId=''):# 針對 投注 回復 做解析
         repspone_json = response.json()
         
         if 'parlay'  in self.bet_type:
@@ -611,11 +677,23 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 pass
                 
             try:
-                order_value['DisplayOdds'] = Itemdict['DisplayOdds']
-                
-                BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊
-                order_value['BettypeName'] = BetRecommends['BettypeName']
-                order_value['LeagueName'] = BetRecommends['LeagueName']
+                #order_value['DisplayOdds'] = Itemdict['DisplayOdds']
+                #BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊，這個不是此注單的資訊，而且下方建議投注的資訊
+                match_key = Itemdict['Key'].split('_')[0]
+                order_value['LeagueName'] = self.MarketId[int(match_key)]['League']
+                BetTypeId = self.MarketId[int(match_key)]['BetTypeId']
+                with open('bettype_id.csv', newline='') as csvfile: #抓取 Site 於什麼 Server Group
+                # 讀取 CSV 檔案內容
+                    rows = csv.reader(csvfile)
+                    # 以迴圈輸出每一列
+                    for row in rows:
+                        if str(BetTypeId) in str(row):
+                            order_value['BettypeName'] = row[1]
+                            break
+                        else:
+                            pass
+                #order_value['BettypeName'] = BetRecommends['BettypeName']
+                #order_value['LeagueName'] = BetRecommends['LeagueName']
 
                 logger.info('order_value  : %s'%order_value)
                 return True
@@ -638,7 +716,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.Odds_dict = {}# key 為 match id ,value 為 odds
         Parlay_dict = {'1' : '1', '2': '4' }# value 是拿來 給 parlay data 的  BetCount 和 TotalStake
 
-        len_Match_dic= len(self.Match_dict )
+        len_Match_dic= len(self.Match_dict)
         logger.info('len_Match_dict : %s'%len_Match_dic)
         if assign_list == '':# 預設為字串 ,使用隨機l
             try:
@@ -695,6 +773,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
                     '''
                     if 'parlay' not in self.bet_type : # single odds 先不轉
+                        odds = str(self.Odds_Tran(odds,odds_type=self.odds_type)).rstrip('0').rstrip('.')
                         bet_stake = 1
                         pass
                         
@@ -715,7 +794,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         ItemList[{index_key}][hdp2]=0&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                         ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
                         Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,
-                        Line = Line, bet_type = self.bet_type, bet_stake = bet_stake )
+                        Line = Line, bet_type = "OU", bet_stake = bet_stake )
                     except Exception as e:
                         logger.error('data_format: %s'%e)
 
@@ -839,10 +918,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
             
                 retry = 0
-                while retry < 2: #預計做兩次 retry，修改完 odds，可能 Stake 大小也會有問題
+                while retry < 3: #預計做三次 retry，修改完 odds，可能 Stake 大小可能也會有問題
                     betting_response = self.Betting_response(response=r, times=times)
                     if betting_response != True and betting_response != False:
-                        r = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                        if retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
+                            post_data =  new_post_data
+                            r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                        else:
+                            r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
                         retry += 1
                     else:
                         break
@@ -857,14 +940,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
     def retry_betting(self,error_code,post_data,bet_stake):
         if "changed" in error_code:
-            old_odds = re.findall('Odds has changed from (.+) to',error_code)[0]
-            new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0]
-            new_post_data = post_data.replace(old_odds,new_odds)
+            old_odds = re.findall('Odds has changed from (.+) to',error_code)[0].rstrip('0') #去除尾數為 0 
+            new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0].rstrip('0')
+            post_data = post_data.replace(old_odds,new_odds)
         elif "less than min stake or more than max stake" in error_code:
             new_bet_stake = bet_stake + 1
-            new_post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
-        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = new_post_data.encode(),headers=self.headers)
-        return r
+            post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
+        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),headers=self.headers)
+        return r,post_data
 
 class Desktop_Api(Login):    
     def __init__(self,client="",device="",user='',url= ''):

@@ -24,8 +24,6 @@ api = Api_Object.Login(sec_times = 1 ,stop_times = 1 ).login_api(device='Pc', us
 
 
 #In[]
-
-
 api.threads(func_name_list = [   api.ShowAllOdds ] )
 
 

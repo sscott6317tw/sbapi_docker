@@ -474,6 +474,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 NewMatch = Data['NewMatch']# list
                 TeamN = Data['TeamN']# dict
                 LeagueN = Data['LeagueN']
+                if len(NewMatch) == 0:
+                    return "No Market"
                 #logger.info('TeamN: %s'%TeamN)
                 for index,dict_ in enumerate(NewMatch):
                     #logger.info('index: %s'%index)
@@ -499,25 +501,25 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             except Exception as e:
                 logger.error('ShowAllOdds: %s'%e)
                 return False
+
         #logger.info('%s'%list(self.MatchId))
         if  filter != '' and len(filter) != 0 :# 只拿指定 的match id , 防呆 fiter如果帶空list
             for key in list(self.MatchId):
                 if str(key) not in filter:
                     del self.MatchId[key]
-        #方便查看資料的
-        path = 'test.txt'
-        f = open(path, 'w')
-        f.write(str(self.MatchId))
-        f.close()
-        
+            if len(self.MatchId) == 0: #寫在裡面判斷是因為，要確定 Match ID List不為 0，所以是 Filter 的問題
+                return "No MatchID"
+
         len_matchid = len(self.MatchId)
         #logger.info('self.MatchId: %s'%self.MatchId)
         logger.info('len MatchId: %s'%len_matchid )
         self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
-        
+
         if len_matchid < 3:
             logger.info('長度小於3 無法串票')
             return 'False'
+        else:
+            return True
 
 
     '''
@@ -564,7 +566,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     new_dict['BetTypeId'] = dict_['BetTypeId']
                     
                     new_dict['Line'] = dict_['Line']
-
+                    new_dict['Pty'] = dict_['Pty']
+                    
                     Selecetion_key =  list(dict_['Selections'].keys())# 為一個betype 下面 所有的bet choice
 
                     for bet_choice_index, bet_choice in enumerate(Selecetion_key): 
@@ -678,10 +681,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('betting response Error Code: %s'%repspone_json['Data']['Common']['ErrorCode'])
 
             self.order_value['TransId_Cash'] = Itemdict['TransId_Cash']
-            self.order_value['Message'] = Itemdict['Message']
+            #self.order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
 
-            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min'] ):
+            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed"] ):
                 return Itemdict['Message']
             else:
                 pass
@@ -691,6 +694,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     #order_value['DisplayOdds'] = Itemdict['DisplayOdds']
                     #BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊，這個不是此注單的資訊，而且下方建議投注的資訊
                     match_key = Itemdict['Key'].split('_')[0]
+                    self.order_value['oddsid'] = match_key
+                    if self.betting_info['Pair/DecOdds'] == 0:
+                        self.order_value['odds_type'] = self.odds_type
+                    else:
+                        self.order_value['odds_type'] = "Dec"
                     self.order_value['LeagueName'] = self.MarketId[int(match_key)]['League']
                     BetTypeId = self.MarketId[int(match_key)]['BetTypeId']
                     with open('bettype_id.csv', newline='') as csvfile: #抓取 Site 於什麼 Server Group
@@ -703,10 +711,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                 break
                             else:
                                 pass
-                    #order_value['BettypeName'] = BetRecommends['BettypeName']
-                    #order_value['LeagueName'] = BetRecommends['LeagueName']
-
+                    self.order_value['BetChoice'] = self.betting_info['bet_team']
+                    self.order_value['Odds'] = self.betting_info['odds']
+                    
                     logger.info('order_value  : %s'%self.order_value)
+                    #方便查看資料的
+                    pass_txt = open('Config/pass.txt', 'a+')
+                    pass_txt.write(str(self.order_value)+'\n')
+                    pass_txt.close()
                     return True
                 except:
                     return False
@@ -963,11 +975,197 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('mobile DoplaceBet Api Fail: %s'%e)
             return False
 
+
+    def DoallbettypeBet(self,already_list=[],bet_team_index='0',times='',all_bet_type= True):
+        self.BetTypeId_list = []
+        self.Odds_dict = {}# key 為 match id ,value 為 odds
+        self.fail_betting = {}
+        len_Match_dic= len(self.Match_dict)
+        logger.info('len_Match_dict : %s'%len_Match_dic)
+        try:
+            for index_key in self.Match_dict.keys():#index_key 為 數值 ,一個 match 比賽 , 就是一個key
+                Match = self.Match_dict[index_key]# key 為 Oddsid ,value為 字典,涵蓋 各種 資訊
+
+                Match_key_list = list(Match.keys())# list裡面放 bettype
+
+                for Ran_Match_id in Match_key_list:
+                    self.betting_info = {} #儲存我下注的值
+                    
+                    logger.info('Ran_Match_id: %s'%Ran_Match_id)
+                    BetTypeId = Match[Ran_Match_id]['BetTypeId']
+                    self.betting_info['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
+                    self.betting_info['MatchId'] = Match[Ran_Match_id]['MatchId']
+                    self.betting_info['Team1'] = Match[Ran_Match_id]['Team1']
+                    self.betting_info['Team2'] = Match[Ran_Match_id]['Team2']
+                    
+                    if all_bet_type == 'true':
+                        do_all_bet_choice_count = str(Match[Ran_Match_id]).count('bet_team')
+                    else:
+                        do_all_bet_choice_count = 1
+                    for bet_team_index in range(do_all_bet_choice_count): #str(Match[Ran_Match_id]).count('bet_team') 是用來計算有幾個 BetChoice
+                        data_str = ""# 需loop 慢慢加起來
+                        try:
+                            self.betting_info['bet_team'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                            odds = Match[Ran_Match_id]['odds_%s'%bet_team_index]
+                            self.betting_info['odds'] = Match[Ran_Match_id]['odds_%s'%bet_team_index]
+                        except: #跳 except 代表沒有 choice 了
+                            break 
+                        if self.bet_type == "OU": #讓 OU bettypeclass 的全下，到 more
+                            logger.info('OddsId: %s 沒有投注過 ,成立'%Ran_Match_id)
+                            pass
+                        else:
+                            if str(Ran_Match_id) in already_list :
+                                logger.info('OddsId: %s 有投注過，換下一個 Odds ID'%Ran_Match_id)
+                                continue
+                            else:
+                                logger.info('OddsId: %s 沒有投注過 ,成立'%Ran_Match_id)
+                                pass
+
+                        self.betting_info['oddsid'] = Ran_Match_id
+                        self.betting_info['Pair/DecOdds'] = Match[Ran_Match_id]['Pty']
+                        
+                        self.betting_info['Line'] = Match[Ran_Match_id]['Line']
+                        if self.betting_info['Line'] == 0:
+                            self.betting_info['Line1'] = ''
+                            self.betting_info['Line2'] = ''
+                        elif self.betting_info['Line'] < 0:
+                            if self.betting_info['bet_team'] == 'h':
+                                self.betting_info['Line'] = abs(Match[Ran_Match_id]['Line'])
+                                self.betting_info['Line1'] = 0
+                                self.betting_info['Line2'] = abs(self.betting_info['Line'])
+                            else:
+                                self.betting_info['Line'] = Match[Ran_Match_id]['Line']
+                                self.betting_info['Line1'] = 0
+                                self.betting_info['Line2'] = abs(self.betting_info['Line'])
+                        elif self.betting_info['Line'] > 0:
+                            if self.betting_info['bet_team'] == 'h':
+                                self.betting_info['Line'] = -Match[Ran_Match_id]['Line']
+                                self.betting_info['Line1'] = abs(Match[Ran_Match_id]['Line'])
+                                self.betting_info['Line2'] = 0
+                            else:
+                                self.betting_info['Line'] = Match[Ran_Match_id]['Line']
+                                self.betting_info['Line1'] = Match[Ran_Match_id]['Line']
+                                self.betting_info['Line2'] = 0
+                        #if index > 2 and set_bet == 1:#串三個即可 . set_bet = 1代表
+                            #break
+
+                        '''
+                        parlay
+                        其他sport 拿到的 odds 需轉成 Dec Odds , Cricket 原本就是 dec odds所以不做轉換 
+                        5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
+                        '''
+                        bet_stake = 2 #大致上都是 2，先預設為 2
+
+                        if self.betting_info['Pair/DecOdds'] == 0: #0 是 pair odds, 1 是 Dec odds
+                            self.betting_info['odds'] = self.Odds_Tran(self.betting_info['odds'],odds_type=self.odds_type)
+                            logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
+                        logger.info('BetTypeId : %s'%BetTypeId)
+                        try:
+                            data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
+                            ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
+                            ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
+                            ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
+                            ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line1}&\
+                            ItemList[{index_key}][hdp2]={Line2}&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
+                            ".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
+                            Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = self.betting_info['bet_team'],
+                            Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
+                        except Exception as e:
+                            logger.error('data_format: %s'%e)
+
+                        data_str = data_str + data_format + '&'
+                        '''
+                        parlay 串多少match 邏輯
+                        當 index 到了 總長度 的最後, 須把 combo_str 家回data裡
+                        '''
+                        if index_key == len_Match_dic -1 :
+
+                            combo_str = "&ItemList[0][Minbet]=1"
+
+                            data_str = data_str + combo_str
+                            
+                            r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
+                                    headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                            try:
+                                logger.info('GetTickets OK')
+                            except:
+                                logger.error('Single Bet Get Ticket 有誤')
+                                return 'GetTickets False'
+
+                        try:
+                            import re
+                            data_str = re.sub(r"\s+", "", data_str)# 移除空白,對 打接口沒影響 ,只是 data好看 
+
+                            #self.headers['Cookie'] = 'ASP.NET_SessionId='+ self.login_session[user]
+                            post_data =  data_str
+                            retry = 0
+                            while retry < 20 :
+                                r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                                if "please try again" in r.text :
+                                    retry += 1
+                                    time.sleep(0.5)
+                                elif "Your session has been terminated" in r.text:
+                                    self.mobile_login("twqa10",central_account='web.desktop',central_password='1q2w3e4r')
+                                else:
+                                    break
+                            if retry == 20: #在最前面下注就失敗
+                                self.order_value['Message'] == r.text
+                                self.order_value['MatchID'] == self.betting_info['MatchId']
+                                self.order_value['oddsid'] == self.betting_info['oddsid']
+                                self.order_value['BetTypeId'] == self.betting_info['BetTypeId']
+                                self.order_value['BetChoice'] == self.betting_info['bet_team']
+                                fail_txt = open('Config/fail.txt', 'a+')
+                                fail_txt.write(str(self.order_value)+'\n')
+                                fail_txt.close()
+                                continue
+
+                            retry = 0
+                            while retry < 10: 
+                                betting_response = self.Betting_response(response=r, times=times)
+                                if betting_response != True and betting_response != False:
+                                    if retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
+                                        post_data =  new_post_data
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                                    else:
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                                    retry += 1
+                                else:
+                                    already_list.append(self.order_value['oddsid'])
+                                    break
+                            if retry == 10:
+                                self.order_value['Message'] == betting_response
+                                self.order_value['MatchID'] == self.betting_info['MatchId']
+                                self.order_value['oddsid'] == self.betting_info['oddsid']
+                                self.order_value['BetTypeId'] == self.betting_info['BetTypeId']
+                                self.order_value['BetChoice'] == self.betting_info['bet_team']
+                                fail_txt = open('Config/fail.txt', 'a+')
+                                fail_txt.write(str(self.order_value)+'\n')
+                                fail_txt.close()
+
+                            #logger.info('repspone_json: %s'%repspone_json)   
+
+                        except Exception as e:
+                            logger.info('mobile DoplaceBet Api Fail: %s'%e)
+                            return False
+                return already_list
+
+        except Exception as e:
+            logger.error('DoplaceBet: %s'%e)
+
+
+
     def retry_betting(self,error_code,post_data,bet_stake):
         if "changed" in error_code:
-            old_odds = re.findall('Odds has changed from (.+) to',error_code)[0].rstrip('0') #去除尾數為 0 
-            new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0].rstrip('0')
-            post_data = post_data.replace(old_odds,new_odds)
+            old_odds = re.findall('Odds has changed from (.+) to',error_code)[0] #去除尾數為 0 
+            new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0]
+            if abs(float(old_odds)) < 100:
+                old_odds = old_odds.rstrip('0')
+            if abs(float(new_odds)) < 100:
+                new_odds = new_odds.rstrip('0')
+            post_data = re.sub("\[odds\]=(.*?)&I", "[odds]="+str(new_odds)+"&I",post_data)
+            self.betting_info['odds'] = new_odds
+        elif "updating odds" in error_code:
+            time.sleep(5) # 系統 有防止 快速 打 接口 ,回復 We are updating odds, please try again later
         elif "less than min stake or more than max stake" in error_code:
             new_bet_stake = bet_stake + 1
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)

@@ -54,12 +54,17 @@ class Common:
         print('time cost',self.time_end -self.time_start,'s')
 
     def game_mapping(self, sport):# 丟sport 參數, 回傳 gameid . 給 ShowAllOdds 街口使用
-        game_dict = {
-            'Soccer': {'gameid': 1}, 'Basketball': {'gameid': 2}, 'Cricket': {'gameid': 50}, 'E-Sports': {'gameid': 43}, 
-            'Tennis': {'gameid': 5}, 'Volleyball': {'gameid': 6}, 'Baseball': {'gameid': 8}, 'Number Game': {'gameid': 161}, 
-            'Soccer Euro Cup': {'gameid': 197}, 'Soccer Champions Cup': {'gameid': 196}, 'Soccer Asian Cup': {'gameid': 194}, 
-            'Soccer League': {'gameid': 190}, 'Soccer World Cup': {'gameid': 192}
-        }
+        game_dict = {'Soccer': {'gameid': 1},'Basketball': {'gameid': 2},'Football': {'gameid': 3},'Ice Hockey': {'gameid': 4},'Tennis': {'gameid': 5},'Volleyball': {'gameid': 6}\
+            ,'Snooker/Pool': {'gameid': 7},'Baseball': {'gameid': 8},'Badminton': {'gameid': 9},'Golf': {'gameid': 10},'Motorsports': {'gameid': 11},'Swimming': {'gameid': 12},\
+            'Politics': {'gameid': 13},'Water Polo': {'gameid': 14},'Diving': {'gameid': 15},'Boxing/MMA': {'gameid': 16},'Archery': {'gameid': 17},'Table Tennis': {'gameid': 18},\
+            'Weightlifting': {'gameid':19},'Canoeing': {'gameid': 20},'Gymnastics': {'gameid': 21},'Athletics': {'gameid': 22},'Equestrian': {'gameid': 23},'Handball': {'gameid': 24},\
+            'Darts': {'gameid': 25},'Field Hockey': {'gameid': 28},'Winter Sports': {'gameid': 29},'Squash': {'gameid': 30},'Entertainment': {'gameid': 31},'Netball': {'gameid': 32},\
+            'Cycling': {'gameid': 33},'Fencing': {'gameid': 34},'Judo': {'gameid': 35},'M.Pentathlon': {'gameid': 36},'Rowing': {'gameid': 37},'Sailing': {'gameid': 38},\
+            'Shooting': {'gameid': 39},'Taekwondo': {'gameid': 40},'Triathlon': {'gameid': 41},'Wrestling': {'gameid': 42},'E-Sports': {'gameid': 43},'Muay Thai': {'gameid': 44},\
+            'Beach Volleyball': {'gameid': 45},'Unknown sport (Thai sport)': {'gameid':46},'Kabaddi': {'gameid': 47},'Sepak Takraw': {'gameid': 48},'Futsal': {'gameid': 49},\
+            'Cricket': {'gameid': 50},'Beach Soccer': {'gameid': 51},'Poker': {'gameid': 52},'Chess': {'gameid': 53},'Olympics': {'gameid': 54},'Finance': {'gameid': 55},\
+            'Lotto': {'gameid': 56},'Other Sports': {'gameid': 99}
+            }
         return game_dict[sport]['gameid']
 
 
@@ -102,7 +107,6 @@ class Common:
         #print(list_)
         s = set(list_)
         return(list(s))
-
 
 
 class Env:

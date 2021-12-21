@@ -1,0 +1,6 @@
+Test Odds Type : US
+{'TransId_Cash': '114249834877', 'oddsid': '388551948', 'odds_type': 'US', 'LeagueName': 'CHINA FOOTBALL SUPER LEAGUE (PLAY OFF)|l_93500.png', 'BettypeName': 'Handicap', 'BetChoice': 'h', 'Odds': '-102'}
+{'TransId_Cash': '114249835242', 'oddsid': '388551946', 'odds_type': 'US', 'LeagueName': 'CHINA FOOTBALL SUPER LEAGUE (PLAY OFF)|l_93500.png', 'BettypeName': 'Over/Under', 'BetChoice': 'h', 'Odds': '101'}
+{'TransId_Cash': '114249835579', 'oddsid': '388551945', 'odds_type': 'Dec', 'LeagueName': 'CHINA FOOTBALL SUPER LEAGUE (PLAY OFF)|l_93500.png', 'BettypeName': 'FT.1X2', 'BetChoice': '1', 'Odds': 4.8}
+{'TransId_Cash': '114249835963', 'oddsid': '388551947', 'odds_type': 'US', 'LeagueName': 'CHINA FOOTBALL SUPER LEAGUE (PLAY OFF)|l_93500.png', 'BettypeName': 'Odd/Even', 'BetChoice': 'h', 'Odds': '-105'}
+{'TransId_Cash': '114249836292', 'oddsid': '388551924', 'odds_type': 'Dec', 'LeagueName': 'CHINA FOOTBALL SUPER LEAGUE (PLAY OFF)|l_93500.png', 'BettypeName': 'Double Chance (Soccer)', 'BetChoice': '1x', 'Odds': 1.99}

@@ -536,7 +536,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.Match_dict = {}# key 當作 index, value 存放 該match id 裡所有 的bettype(self.MarketId)
 
         for index,match_id in enumerate(self.MatchId.keys()):
-            print(match_id)
             self.MarketId = {}
             market = self.MatchId[match_id]['Market']
             logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]))

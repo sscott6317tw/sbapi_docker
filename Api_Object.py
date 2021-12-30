@@ -30,10 +30,10 @@ class Login(Common):#取得驗證碼邏輯
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
     
     
-    def login_api(self, device,user,url,client='',central_account='',central_password='',site=''):
+    def login_api(self, device,user,password =  '1q2w3e4r',url='',client='',central_account='',central_password='',site=''):
         '''devive 為Pc 才會去叫 webdriver ,要取驗證碼'''
         if device in ['mobile','app']:
-            mobile_api = Mobile_Api(device='app',  password =  '1q2w3e4r', url=url ,client = client,
+            mobile_api = Mobile_Api(device='app',  password=password, url=url ,client = client,
             sec_times=self.sec_times, stop_times=self.stop_times,site=site )
 
             login_rseult = mobile_api.mobile_login(user=user,central_account=central_account,
@@ -153,12 +153,12 @@ class Login(Common):#取得驗證碼邏輯
 
 #login_type 預設空字串, 是使用 athena 登入 
 class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
-    def __init__(self,client,device="",url='',password='',sec_times='',stop_times='',site=''):
+    def __init__(self,client,device="",url='',user='',password='',sec_times='',stop_times='',site=''):
         super().__init__(device,sec_times,stop_times) 
         self.login_session = {}# key 為 user ,value 放 NET_SessionId
         self.url = url
         self.login_type = ''# api site 為 空字串
-        if 'athena' in self.url:
+        if 'athena' in self.url or 'nova88' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
         self.api_site = ''# 預設空
         self.password = password
@@ -237,16 +237,23 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     athena 需叫 本地js , api site 直接 在 url 後面增加query 參數
     '''
     def mobile_login(self,user,central_account='',central_password=''):# Mobile Login街口邏輯
+        self.user = user
         if self.login_type  == 'athena':# athena 登入
             common_js = execjs.compile(self.js_from_file('./login_js/mobile.js'))# 讀取 login js檔
             PKey = self.get_Pwekey()
             cfs_psswd = common_js.call("r", self.password ,PKey)#App 密碼加密,適用 密碼和 PKey 去做前端js處理
             logger.info('app cfs_psswd: %s'%cfs_psswd)
-
-            login_data = 'Username={user}&Password={cfs_psswd}&Language=zh-CN&isGesture=false\
-            &skinMode=3%3D%3D&__tk=&detecas_analysis=%7B%22startTime%22%3A1630246986799%2C%22version\
-            %22%3A%222.0.6%22%2C%22exceptions%22%3A%5B%5D%2C%22executions%22%3A%5B%5D%2C%22storages%22%3A%5B%5D%2C%22devices%22%3A%5B%5D%2C%22\
-            enable%22%3Atrue%7D'.format(user=user, cfs_psswd=cfs_psswd)
+            if "nova88" in self.url:
+                self.url = "https://m.nova88.com"
+                login_data = 'Username={user}&Password={cfs_psswd}&Language=zh-CN&isGesture=false\
+                &__tk=&detecas_analysis=%7B%22startTime%22%3A1630246986799%2C%22version\
+                %22%3A%222.0.6%22%2C%22exceptions%22%3A%5B%5D%2C%22executions%22%3A%5B%5D%2C%22storages%22%3A%5B%5D%2C%22devices%22%3A%5B%5D%2C%22\
+                enable%22%3Atrue%7D'.format(user=user, cfs_psswd=cfs_psswd)
+            else:
+                login_data = 'Username={user}&Password={cfs_psswd}&Language=zh-CN&isGesture=false\
+                &skinMode=3%3D%3D&__tk=&detecas_analysis=%7B%22startTime%22%3A1630246986799%2C%22version\
+                %22%3A%222.0.6%22%2C%22exceptions%22%3A%5B%5D%2C%22executions%22%3A%5B%5D%2C%22storages%22%3A%5B%5D%2C%22devices%22%3A%5B%5D%2C%22\
+                enable%22%3Atrue%7D'.format(user=user, cfs_psswd=cfs_psswd)
 
             self.headers['X-Requested-With'] =  'XMLHttpRequest'
             self.headers['Content-Type'] =  'application/x-www-form-urlencoded; charset=UTF-8'
@@ -260,13 +267,18 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 ErrorCode = repspone_json['ErrorCode']
                 logger.info('ErrorMsg: %s'%ErrorMsg)
                 logger.info('ErrorCode: %s'%ErrorCode)
+                
                 #if ErrorMsg != 'login_success':
                     #return ErrorMsg
                 if ErrorMsg is None and str(repspone_json['ErrorCode']) == '0' :# 位存款帳號登入 會為 none
                     logger.info('未存款登入成功')
                 else:
                     Data_url = repspone_json['Data']# 登入成功後, 需在get 一次 response 回傳的 url
-                    r = self.client_session.get(self.url  + Data_url, headers=self.headers)
+                    if "nova88" in self.url:
+                        self.nova_set_odds_type_url = Data_url.split('/ValidateToken')[0]
+                        r = self.client_session.get(Data_url, headers=self.headers)
+                    else:
+                        r = self.client_session.get(self.url  + Data_url, headers=self.headers)
                 
                 cookie_session = self.client_session.cookies.get_dict()
                 NET_SessionId = cookie_session['ASP.NET_SessionId']
@@ -351,6 +363,15 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.odds_type = odds_type
         odds_type_dict = {'Dec' : '1','CN' : '2','Indo' : '3','MY' : '4','US' : '5'}
         data = 'DefaultLanguage=en-US&OddsType={odds_type}&BetStake=0&BetterOdds=false&oddssort=2&inpbetStake=0'.format(odds_type=odds_type_dict[odds_type])
+        if "nova88" in self.url:
+            self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
+            self.headers['Accept-Language'] = 'zh-TW,zh;q=0.9'
+            self.headers['X-Requested-With'] = 'XMLHttpRequest'
+            self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+            self.url = self.nova_set_odds_type_url
+            #self.headers['Cookie'] = "ASP.NET_SessionId=" + self.client_session.cookies.get_dict()['ASP.NET_SessionId']
+            #self.headers['Cookie'] = "ASP.NET_SessionId=zsas5pqboaj1eb30novyhuda" 
+        logger.info('NET_SessionId: %s'%self.client_session.cookies.get_dict()['ASP.NET_SessionId'])
         r = self.client_session.post(self.url  + '/setting/SaveUserProfile',data=data,headers=self.headers)
         try:
             repspone_json = r.json()
@@ -536,10 +557,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.Match_dict = {}# key 當作 index, value 存放 該match id 裡所有 的bettype(self.MarketId)
 
         for index,match_id in enumerate(self.MatchId.keys()):
+            #print(match_id)
             self.MarketId = {}
             market = self.MatchId[match_id]['Market']
             logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]))
-            data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":0}
+            if self.gameid == 50 and "more" in self.bet_type: #當 Sports 為 Cricket，Gametype 為 1
+                data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":1}
+            else:
+                data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":0}
             try:
                 r = self.client_session.post(self.url  + '/Odds/GetMarket',data=data,headers=self.headers)
                 repspone_json = r.json()
@@ -551,6 +576,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 # 回傳的 資料結構不同
                 if "more" in self.bet_type:
                     NewOdds = repspone_json['Data']['Markets']['NewOdds']# 一個list 裡面包一個長度的dict
+                    SpMatch_odds_list = repspone_json['Data']['SpMatch']['NewMatch'] #會有 list 
+                    for SpMatch in  SpMatch_odds_list:
+                        for SpMatch_market_odds in SpMatch['Markets']:
+                            NewOdds.append(SpMatch_market_odds)
                 else:
                     NewOdds = repspone_json['Data']['NewOdds']
                 
@@ -577,7 +606,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     new_value = MatchId_value.copy()# 原本
                     new_value.update(new_dict)# 新的放進來
                     self.MarketId[MarketId] = new_value
-                
+
                 Market_value = self.MarketId
                 self.Match_dict[index] = Market_value
                 if index == int(parlay_len) - 1:
@@ -683,7 +712,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #self.order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
 
-            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed"] ):
+            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed","is closed","System Error","temporarily closed"] ):
                 return Itemdict['Message']
             else:
                 pass
@@ -975,7 +1004,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             return False
 
 
-    def DoallbettypeBet(self,already_list=[],bet_team_index='0',times='',all_bet_type= True):
+    def DoallbettypeBet(self,already_list=[],bet_team_index='0',times='',all_bet_choice= True):
         self.BetTypeId_list = []
         self.Odds_dict = {}# key 為 match id ,value 為 odds
         self.fail_betting = {}
@@ -986,8 +1015,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 Match = self.Match_dict[index_key]# key 為 Oddsid ,value為 字典,涵蓋 各種 資訊
 
                 Match_key_list = list(Match.keys())# list裡面放 bettype
-
+                
                 for Ran_Match_id in Match_key_list:
+                    bettype_is_closed = False #用來判斷 Bettype 是不是關閉了
                     self.betting_info = {} #儲存我下注的值
                     
                     logger.info('Ran_Match_id: %s'%Ran_Match_id)
@@ -997,7 +1027,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     self.betting_info['Team1'] = Match[Ran_Match_id]['Team1']
                     self.betting_info['Team2'] = Match[Ran_Match_id]['Team2']
                     
-                    if all_bet_type == 'true':
+                    if all_bet_choice == 'true':
                         do_all_bet_choice_count = str(Match[Ran_Match_id]).count('bet_team')
                     else:
                         do_all_bet_choice_count = 1
@@ -1009,16 +1039,20 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             self.betting_info['odds'] = Match[Ran_Match_id]['odds_%s'%bet_team_index]
                         except: #跳 except 代表沒有 choice 了
                             break 
-                        if self.bet_type == "OU": #讓 OU bettypeclass 的全下，到 more
-                            logger.info('OddsId: %s 沒有投注過 ,成立'%Ran_Match_id)
-                            pass
-                        else:
-                            if str(Ran_Match_id) in already_list :
-                                logger.info('OddsId: %s 有投注過，換下一個 Odds ID'%Ran_Match_id)
-                                continue
-                            else:
+                        if bettype_is_closed == False:
+                            if self.bet_type == "OU": #讓 OU bettypeclass 的全下，到 more
                                 logger.info('OddsId: %s 沒有投注過 ,成立'%Ran_Match_id)
                                 pass
+                            else:
+                                if str(Ran_Match_id) in already_list :
+                                    logger.info('OddsId: %s 有投注過，換下一個 Odds ID'%Ran_Match_id)
+                                    continue
+                                else:
+                                    logger.info('OddsId: %s 沒有投注過 ,成立'%Ran_Match_id)
+                                    pass
+                        else:
+                            logger.info('OddsId: %s 已經 Close ,不再下注'%Ran_Match_id)
+                            break
 
                         self.betting_info['oddsid'] = Ran_Match_id
                         self.betting_info['Pair/DecOdds'] = Match[Ran_Match_id]['Pty']
@@ -1060,15 +1094,27 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
                         logger.info('BetTypeId : %s'%BetTypeId)
                         try:
-                            data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
-                            ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
-                            ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
-                            ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
-                            ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line1}&\
-                            ItemList[{index_key}][hdp2]={Line2}&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
-                            ".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
-                            Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = self.betting_info['bet_team'],
-                            Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
+                            if "+" in self.betting_info['bet_team'] : #當 betteam 包含 '+' 字串，會下注失敗，需要用 encode 格式去打
+                                new_betteam = self.betting_info['bet_team'].replace("+","")
+                                data_format = "ItemList%5B0%5D%5Btype%5D={bet_type}&ItemList%5B0%5D%5Bbettype%5D={BetTypeId}&ItemList%5B0%5D%5Boddsid%5D={oddsid}&ItemList%5B0%5D%5Bodds%5D={odds}&ItemList%\
+                                    5B0%5D%5BLine%5D={Line}&ItemList%5B0%5D%5BHscore%5D=0&ItemList%5B0%5D%5BAscore%5D=32&ItemList%5B0%5D%5BMatchid%5D={Matchid}&ItemList%5B0%5D%5Bbetteam%5D={betteam}%2B&\
+                                    ItemList%5B0%5D%5Bstake%5D={bet_stake}&ItemList%5B0%5D%5BQuickBet%5D=1%3A100%3A10%3A1&ItemList%5B0%5D%5BChoiceValue%5D=&ItemList%5B0%5D%5Bhome%5D={Team1}&\
+                                    ItemList%5B0%5D%5Baway%5D={Team2}&ItemList%5B0%5D%5Bgameid%5D={gameid}&ItemList%5B0%5D%5BisMMR%5D=0&ItemList%5B0%5D%5BMRPercentage%5D=&ItemList%5B0%5D%5BGameName%5D=&\
+                                    ItemList%5B0%5D%5BSportName%5D=Basketball&ItemList%5B0%5D%5BIsInPlay%5D=false&ItemList%5B0%5D%5BSrcOddsInfo%5D=&ItemList%5B0%5D%5Bpty%5D=1&\
+                                    ItemList%5B0%5D%5BHdp1%5D={Line1}&ItemList%5B0%5D%5BHdp2%5D={Line2}&ItemList%5B0%5D%5BBonusID%5D=0&ItemList%5B0%5D%5BBonusType%5D=0&ItemList%5B0%5D%5Bsinfo%5D=F1B30X0000&\
+                                    ItemList%5B0%5D%5BhasCashOut%5D=false".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
+                                    Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = new_betteam,
+                                    Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
+                            else:
+                                data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
+                                ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
+                                ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
+                                ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
+                                ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line1}&\
+                                ItemList[{index_key}][hdp2]={Line2}&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
+                                ".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
+                                Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = self.betting_info['bet_team'],
+                                Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
                         except Exception as e:
                             logger.error('data_format: %s'%e)
 
@@ -1098,45 +1144,52 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             #self.headers['Cookie'] = 'ASP.NET_SessionId='+ self.login_session[user]
                             post_data =  data_str
                             retry = 0
-                            while retry < 20 :
+                            while retry < 10 :
                                 r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
                                 if "please try again" in r.text :
+                                    time.sleep(1)
                                     retry += 1
-                                    time.sleep(0.5)
                                 elif "Your session has been terminated" in r.text:
-                                    self.mobile_login("twqa10",central_account='web.desktop',central_password='1q2w3e4r')
+                                    if "nova88" in self.url:
+                                        time.sleep(10)
+                                    self.mobile_login(user=self.user,central_account='web.desktop',central_password='1q2w3e4r')
                                 else:
                                     break
-                            if retry == 20: #在最前面下注就失敗
-                                self.order_value['Message'] == r.text
-                                self.order_value['MatchID'] == self.betting_info['MatchId']
-                                self.order_value['oddsid'] == self.betting_info['oddsid']
-                                self.order_value['BetTypeId'] == self.betting_info['BetTypeId']
-                                self.order_value['BetChoice'] == self.betting_info['bet_team']
+                            if retry == 10: #在最前面下注就失敗
+                                self.order_value['Message'] = r.text['Message']
+                                self.order_value['MatchID'] = self.betting_info['MatchId']
+                                self.order_value['oddsid'] = self.betting_info['oddsid']
+                                self.order_value['BetTypeId'] = self.betting_info['BetTypeId']
+                                self.order_value['BetChoice'] = self.betting_info['bet_team']
                                 fail_txt = open('Config/fail.txt', 'a+')
                                 fail_txt.write(str(self.order_value)+'\n')
                                 fail_txt.close()
                                 continue
 
                             retry = 0
-                            while retry < 10: 
+                            while retry < 6: 
                                 betting_response = self.Betting_response(response=r, times=times)
                                 if betting_response != True and betting_response != False:
-                                    if retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
-                                        post_data =  new_post_data
-                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                                    if "is closed" in betting_response or "System Error" in betting_response:
+                                        bettype_is_closed = True
+                                        retry = 6
+                                        break
+                                    elif retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
+                                        post_data = new_post_data
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake,retry) #現在只為了 Single betting 新增
                                     else:
-                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake,retry) #現在只為了 Single betting 新增
                                     retry += 1
                                 else:
-                                    already_list.append(self.order_value['oddsid'])
+                                    if self.bet_type == "OU": #只要記錄 OU 的 Oddsid 避免 More 的重複下到
+                                        already_list.append(self.order_value['oddsid'])
                                     break
-                            if retry == 10:
-                                self.order_value['Message'] == betting_response
-                                self.order_value['MatchID'] == self.betting_info['MatchId']
-                                self.order_value['oddsid'] == self.betting_info['oddsid']
-                                self.order_value['BetTypeId'] == self.betting_info['BetTypeId']
-                                self.order_value['BetChoice'] == self.betting_info['bet_team']
+                            if retry == 6:
+                                self.order_value['Message'] = str(betting_response)
+                                self.order_value['MatchID'] = self.betting_info['MatchId']
+                                self.order_value['oddsid'] = self.betting_info['oddsid']
+                                self.order_value['BetTypeId'] = self.betting_info['BetTypeId']
+                                self.order_value['BetChoice'] = self.betting_info['bet_team']
                                 fail_txt = open('Config/fail.txt', 'a+')
                                 fail_txt.write(str(self.order_value)+'\n')
                                 fail_txt.close()
@@ -1145,16 +1198,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         except Exception as e:
                             logger.info('mobile DoplaceBet Api Fail: %s'%e)
-                            return False
                 return already_list
 
         except Exception as e:
             logger.error('DoplaceBet: %s'%e)
 
 
-
-    def retry_betting(self,error_code,post_data,bet_stake):
-        if "changed" in error_code:
+    def retry_betting(self,error_code,post_data,bet_stake,retry):
+        if "Odds has changed" in error_code:
             old_odds = re.findall('Odds has changed from (.+) to',error_code)[0] #去除尾數為 0 
             new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0]
             if abs(float(old_odds)) < 100:
@@ -1163,12 +1214,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 new_odds = new_odds.rstrip('0')
             post_data = re.sub("\[odds\]=(.*?)&I", "[odds]="+str(new_odds)+"&I",post_data)
             self.betting_info['odds'] = new_odds
-        elif "updating odds" in error_code:
+        elif "updating odds" in error_code or "temporarily closed" in error_code:
             time.sleep(5) # 系統 有防止 快速 打 接口 ,回復 We are updating odds, please try again later
+        elif "score has been changed" in error_code :
+            post_data = "ItemList[0][Ascore]={Ascore}&".format(Ascore= retry) + post_data
         elif "less than min stake or more than max stake" in error_code:
-            new_bet_stake = bet_stake + 1
+            new_bet_stake = bet_stake + retry + 1
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
-        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),headers=self.headers)
+        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data,headers=self.headers)
         return r,post_data
 
 class Desktop_Api(Login):    

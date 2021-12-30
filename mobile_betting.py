@@ -64,7 +64,9 @@ class mobile_api_betting:
 
         pass_txt = open('Config/pass.txt', 'r')  #把結果印在 Log 裡面方便確認
         fail_txt = open('Config/fail.txt', 'r')
+        print("PASS List : ")
         print(pass_txt.read())
+        print("FAIL List : ")
         print(fail_txt.read())
         pass_txt.close()
         fail_txt.close()

@@ -1224,7 +1224,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         elif "score has been changed" in error_code :
             post_data = "ItemList[0][Ascore]={Ascore}&".format(Ascore= retry) + post_data
         elif "less than min stake or more than max stake" in error_code:
-            new_bet_stake = bet_stake + 4
+            if "nova88" in self.url :
+                new_bet_stake = bet_stake + 10
+            else:
+                new_bet_stake = bet_stake + 4
             self.bet_stake = new_bet_stake
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
         r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data,headers=self.headers)

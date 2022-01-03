@@ -158,7 +158,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.login_session = {}# key 為 user ,value 放 NET_SessionId
         self.url = url
         self.login_type = ''# api site 為 空字串
-        if 'athena' in self.url or 'nova88' in self.url:
+        if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
         self.api_site = ''# 預設空
         self.password = password
@@ -1235,9 +1235,8 @@ class Desktop_Api(Login):
             self.client_session = self.session
         else:
             self.client_session = client
-        if 'athena' in self.url:
+        if 'athena' in self.url or 'spondemo' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
-
         if client == '':
             self.client_session = self.session
         else:

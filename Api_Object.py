@@ -157,6 +157,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         super().__init__(device,sec_times,stop_times) 
         self.login_session = {}# key 為 user ,value 放 NET_SessionId
         self.url = url
+        self.default_url = url
         self.login_type = ''# api site 為 空字串
         if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
@@ -244,7 +245,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             cfs_psswd = common_js.call("r", self.password ,PKey)#App 密碼加密,適用 密碼和 PKey 去做前端js處理
             logger.info('app cfs_psswd: %s'%cfs_psswd)
             if "nova88" in self.url:
-                self.url = "https://m.nova88.com"
+                self.url = self.default_url
                 login_data = 'Username={user}&Password={cfs_psswd}&Language=zh-CN&isGesture=false\
                 &__tk=&detecas_analysis=%7B%22startTime%22%3A1630246986799%2C%22version\
                 %22%3A%222.0.6%22%2C%22exceptions%22%3A%5B%5D%2C%22executions%22%3A%5B%5D%2C%22storages%22%3A%5B%5D%2C%22devices%22%3A%5B%5D%2C%22\
@@ -274,9 +275,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     logger.info('未存款登入成功')
                 else:
                     Data_url = repspone_json['Data']# 登入成功後, 需在get 一次 response 回傳的 url
-                    if "nova88" in self.url:
-                        self.nova_set_odds_type_url = Data_url.split('/ValidateToken')[0]
-                        r = self.client_session.get(Data_url, headers=self.headers)
+                    if "nova88" in self.url :
+                        if "nova88" in Data_url:
+                            self.nova_set_odds_type_url = Data_url.split('/ValidateToken')[0]
+                            r = self.client_session.get(Data_url, headers=self.headers)
+                        else:
+                            self.nova_set_odds_type_url = self.url
+                            r = self.client_session.get(self.url + Data_url, headers=self.headers)
                     else:
                         r = self.client_session.get(self.url  + Data_url, headers=self.headers)
                 
@@ -1087,7 +1092,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         其他sport 拿到的 odds 需轉成 Dec Odds , Cricket 原本就是 dec odds所以不做轉換 
                         5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
                         '''
-                        bet_stake = 2 #大致上都是 2，先預設為 2
+                        self.bet_stake = 2 #大致上都是 2，先預設為 2
 
                         if self.betting_info['Pair/DecOdds'] == 0: #0 是 pair odds, 1 是 Dec odds
                             self.betting_info['odds'] = self.Odds_Tran(self.betting_info['odds'],odds_type=self.odds_type)
@@ -1104,7 +1109,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     ItemList%5B0%5D%5BHdp1%5D={Line1}&ItemList%5B0%5D%5BHdp2%5D={Line2}&ItemList%5B0%5D%5BBonusID%5D=0&ItemList%5B0%5D%5BBonusType%5D=0&ItemList%5B0%5D%5Bsinfo%5D=F1B30X0000&\
                                     ItemList%5B0%5D%5BhasCashOut%5D=false".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
                                     Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = new_betteam,
-                                    Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
+                                    Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = self.bet_stake )
                             else:
                                 data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                                 ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
@@ -1114,7 +1119,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                 ItemList[{index_key}][hdp2]={Line2}&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                                 ".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
                                 Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = self.betting_info['bet_team'],
-                                Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = bet_stake )
+                                Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = self.bet_stake )
                         except Exception as e:
                             logger.error('data_format: %s'%e)
 
@@ -1176,9 +1181,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                         break
                                     elif retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
                                         post_data = new_post_data
-                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake,retry) #現在只為了 Single betting 新增
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,self.bet_stake,retry) #現在只為了 Single betting 新增
                                     else:
-                                        r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake,retry) #現在只為了 Single betting 新增
+                                        r,new_post_data = self.retry_betting(betting_response,post_data,self.bet_stake,retry) #現在只為了 Single betting 新增
                                     retry += 1
                                 else:
                                     if self.bet_type == "OU": #只要記錄 OU 的 Oddsid 避免 More 的重複下到
@@ -1219,7 +1224,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         elif "score has been changed" in error_code :
             post_data = "ItemList[0][Ascore]={Ascore}&".format(Ascore= retry) + post_data
         elif "less than min stake or more than max stake" in error_code:
-            new_bet_stake = bet_stake + retry + 1
+            new_bet_stake = bet_stake + 4
+            self.bet_stake = new_bet_stake
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
         r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data,headers=self.headers)
         return r,post_data

@@ -1101,6 +1101,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         try:
                             if "+" in self.betting_info['bet_team'] : #當 betteam 包含 '+' 字串，會下注失敗，需要用 encode 格式去打
                                 new_betteam = self.betting_info['bet_team'].replace("+","")
+                                if new_betteam == 'G7/G7':
+                                    new_betteam = 'G7%2B/G7'
                                 data_format = "ItemList%5B0%5D%5Btype%5D={bet_type}&ItemList%5B0%5D%5Bbettype%5D={BetTypeId}&ItemList%5B0%5D%5Boddsid%5D={oddsid}&ItemList%5B0%5D%5Bodds%5D={odds}&ItemList%\
                                     5B0%5D%5BLine%5D={Line}&ItemList%5B0%5D%5BHscore%5D=0&ItemList%5B0%5D%5BAscore%5D=32&ItemList%5B0%5D%5BMatchid%5D={Matchid}&ItemList%5B0%5D%5Bbetteam%5D={betteam}%2B&\
                                     ItemList%5B0%5D%5Bstake%5D={bet_stake}&ItemList%5B0%5D%5BQuickBet%5D=1%3A100%3A10%3A1&ItemList%5B0%5D%5BChoiceValue%5D=&ItemList%5B0%5D%5Bhome%5D={Team1}&\
@@ -1111,6 +1113,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = new_betteam,
                                     Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = self.bet_stake )
                             else:
+                                if "H1" in self.betting_info['bet_team'] or "O1" in self.betting_info['bet_team']:
+                                    self.betting_info['bet_team'] = self.betting_info['bet_team'].replace("1","")
                                 data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                                 ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
                                 ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
@@ -1137,9 +1141,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
                                     headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
                             try:
+                                if any(_bet_team in self.betting_info['bet_team'] for _bet_team in  ['aos','AOS']) or any(_BetTypeId in str(self.betting_info['BetTypeId']) for _BetTypeId in ['468','469']): #如果是 aos 就要抓取 SrcOddsInfo，並放到 postdata 裡面
+                                    repspone_json = r.json()
+                                    SrcOddsInfo = repspone_json['Data'][0]['SrcOddsInfo']
+                                    data_str = "ItemList[0][SrcOddsInfo]={SrcOddsInfo}&".format(SrcOddsInfo= SrcOddsInfo) + data_str
                                 logger.info('GetTickets OK')
-                            except:
-                                logger.error('Single Bet Get Ticket 有誤')
+                            except Exception as e:
+                                logger.error('Single Bet Get Ticket 有誤 : '+str(e))
                                 return 'GetTickets False'
 
                         try:
@@ -1152,7 +1160,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             while retry < 10 :
                                 r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
                                 if "please try again" in r.text :
-                                    time.sleep(1)
+                                    time.sleep(0.5)
                                     retry += 1
                                 elif "Your session has been terminated" in r.text:
                                     if "nova88" in self.url:
@@ -1161,7 +1169,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                 else:
                                     break
                             if retry == 10: #在最前面下注就失敗
-                                self.order_value['Message'] = r.text['Message']
+                                self.order_value = {}
+                                try:
+                                    r.text['Message']
+                                except:
+                                    repspone_json = r.json()
+                                    print(repspone_json['Data'])
+                                    Data = repspone_json['Data']['ItemList'][0]
+                                    self.order_value['Message'] = Data['Message']
                                 self.order_value['MatchID'] = self.betting_info['MatchId']
                                 self.order_value['oddsid'] = self.betting_info['oddsid']
                                 self.order_value['BetTypeId'] = self.betting_info['BetTypeId']
@@ -1213,9 +1228,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         if "Odds has changed" in error_code:
             old_odds = re.findall('Odds has changed from (.+) to',error_code)[0] #去除尾數為 0 
             new_odds = re.findall('Odds has changed from .+ to (.+).',error_code)[0]
-            if abs(float(old_odds)) < 100:
+            if abs(float(old_odds)) < 100 and '.0' in old_odds: # 要把 .0 刪掉
                 old_odds = old_odds.rstrip('0')
-            if abs(float(new_odds)) < 100:
+            if abs(float(new_odds)) < 100 and '.0' in old_odds:
                 new_odds = new_odds.rstrip('0')
             post_data = re.sub("\[odds\]=(.*?)&I", "[odds]="+str(new_odds)+"&I",post_data)
             self.betting_info['odds'] = new_odds
@@ -1230,6 +1245,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 new_bet_stake = bet_stake + 4
             self.bet_stake = new_bet_stake
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
+        elif "HDP/OU has been changed." in error_code:
+            pass
         r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data,headers=self.headers)
         return r,post_data
 

@@ -96,7 +96,7 @@ all_bet_choice=sys.argv[9]
 all_odds_type=sys.argv[10]
 all_odds_type = all_odds_type.split(',')
 
-#mobile_api_betting_test = mobile_api_betting(url= 'http://smart.spondemo.com/',id='twqa10',pw='1q2w3e4r',central_account='web.desktop',central_password='1q2w3e4r',market='Early',sport="Soccer",all_bet_choice='true',match_id='49336220',all_odds_type=["Dec"])
+#mobile_api_betting_test = mobile_api_betting(url= 'http://smart.athena000.com/',id='twqa10',pw='1q2w3e4r',central_account='web.desktop',central_password='1q2w3e4r',market='Early',sport="Soccer",all_bet_choice='true',match_id='49301197',all_odds_type=["CN"])
 #mobile_api_betting_test = mobile_api_betting(url= 'http://qawer.nova88.com:5182/',id='wendy01',pw='111111',central_account='web.desktop',central_password='1q2w3e4r',market='Early',sport="Cricket",all_bet_choice='true',match_id='49349092',all_odds_type=["Dec"])
 mobile_api_betting_test = mobile_api_betting(url= url,id=id,pw=pw,central_account=central_account,central_password=central_password,market=market,sport=sport,all_bet_choice=all_bet_choice,match_id=match_id,all_odds_type=all_odds_type)
 mobile_api_betting_test.api_betting()

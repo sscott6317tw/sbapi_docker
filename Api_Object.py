@@ -593,7 +593,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 for dict_ in NewOdds:#list包字典# ,裡面 一個dict 會有 很多 marketid (Oddsid)要取得
                     #logger.info('dict: %s'%dict_)
                     new_dict = {}
-                    
+                    if 'hdp2' in str(dict_) : #給 Match Handicap & Total 帶入的值
+                        new_dict['hdp2'] = dict_['hdp2']
                     MarketId = dict_['MarketId']
                     new_dict['MatchId'] = dict_['MatchId']
                     new_dict['BetTypeId'] = dict_['BetTypeId']
@@ -1083,7 +1084,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             else:
                                 self.betting_info['Line'] = Match[Ran_Match_id]['Line']
                                 self.betting_info['Line1'] = Match[Ran_Match_id]['Line']
-                                self.betting_info['Line2'] = 0
+                                try:
+                                    self.betting_info['Line2'] = Match[Ran_Match_id]['hdp2'] 
+                                except:
+                                    self.betting_info['Line2'] = 0
                         #if index > 2 and set_bet == 1:#串三個即可 . set_bet = 1代表
                             #break
 
@@ -1113,7 +1117,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = new_betteam,
                                     Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = self.bet_stake )
                             else:
-                                if "H1" in self.betting_info['bet_team'] or "O1" in self.betting_info['bet_team']:
+                                if ("H1" in self.betting_info['bet_team'] and "-" not in self.betting_info['bet_team']) or "O1" in self.betting_info['bet_team']:
                                     self.betting_info['bet_team'] = self.betting_info['bet_team'].replace("1","")
                                 data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                                 ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
@@ -1174,7 +1178,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     r.text['Message']
                                 except:
                                     repspone_json = r.json()
-                                    print(repspone_json['Data'])
                                     Data = repspone_json['Data']['ItemList'][0]
                                     self.order_value['Message'] = Data['Message']
                                 self.order_value['MatchID'] = self.betting_info['MatchId']

@@ -43,8 +43,6 @@ api.GetMarket()
 api.DoplaceBet()
 
 #In[]
-
-
 api.threads(func_name_list = [   api.ShowAllOdds ] )
 
 

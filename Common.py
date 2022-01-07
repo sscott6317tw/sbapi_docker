@@ -101,7 +101,7 @@ class Common:
 
 class Env:
     def __init__(self):
-        self.url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
+        self.api_url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
         'Bbin': 'http://ismart.playbooksb.com/apilogin', '12Bet': 'http://ismart.wew77.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
         'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.fx9888.com/apilogin',

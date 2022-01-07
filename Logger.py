@@ -3,7 +3,7 @@ import pathlib
 
 from datetime import datetime
 
-dir_path = project_path = str(pathlib.Path(__file__).parent.parent.absolute()) + r"\logs"
+dir_path = project_path = str(pathlib.Path(__file__).parent.absolute()) + r"\logs"
 
 filename = "{:%Y-%m-%d}".format(datetime.now()) + '.log'  # 設定檔名
 
@@ -20,9 +20,14 @@ def create_logger(log_folder, log_name):
     #     os.makedirs(dir_path + log_folder)
     #
     # # file handler
-    # fileHandler = logging.FileHandler(dir_path + log_folder + '/' + filename, 'w', 'utf-8')
-    # fileHandler.setFormatter(formatter)
-    # my_logger.addHandler(fileHandler)
+    '''
+    寫入 txt
+    fileHandler = logging.FileHandler(dir_path + log_folder + '/' + filename, 'w', 'utf-8')
+    fileHandler.setFormatter(formatter)
+    my_logger.addHandler(fileHandler)
+    '''
+
+
 
     # console handler
     consoleHandler = logging.StreamHandler()

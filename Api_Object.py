@@ -843,7 +843,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
                     '''
                     if 'parlay' not in self.bet_type : # single odds 先不轉
-                        odds = str(self.Odds_Tran(odds,odds_type=self.odds_type)).rstrip('0').rstrip('.')
+                        #odds = str(self.Odds_Tran(odds,odds_type=self.odds_type)).rstrip('0').rstrip('.')
                         bet_stake = 1
                         pass
                         
@@ -988,20 +988,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
             
-                retry = 0
-                while retry < 3: #預計做三次 retry，修改完 odds，可能 Stake 大小可能也會有問題
-                    betting_response = self.Betting_response(response=r, times=times)
-                    if betting_response != True and betting_response != False:
-                        if retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
-                            post_data =  new_post_data
-                            r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
-                        else:
-                            r,new_post_data = self.retry_betting(betting_response,post_data,bet_stake) #現在只為了 Single betting 新增
-                        retry += 1
-                    else:
-                        break
+            return self.Betting_response(response=r, times=times)
 
-            return betting_response
+            #return betting_response
 
             #logger.info('repspone_json: %s'%repspone_json)   
 

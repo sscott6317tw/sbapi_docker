@@ -1,7 +1,10 @@
+
+#In[]
 import Api_Object
 from collections import defaultdict
 from Common import Env
 from  Logger import create_logger 
+from Sql_Con import DataBaseInfo
 
 
 class Site_Api(Env):
@@ -24,7 +27,7 @@ class Site_Api(Env):
                 login_user = 'twqa09'
             self.site_dict[site] = self.response_dict
             api = Api_Object.Login(sec_times = 1 ,stop_times = 1 ).login_api(device = device , user= login_user,
-            url = self.url_dict[device][site]     ,
+            url = self.api_url_dict[device][site]     ,
             central_account='web.desktop', central_password='1q2w3e4r', site = site )
   
             self.log.info('login : %s'%api)
@@ -91,15 +94,19 @@ class Site_Api(Env):
 
 log = create_logger(r"\AutoTest", 'test')
 
-site_list = list(Env().url_dict['mobile'].keys())
+site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Xtu168']
+
+site_list = ['12Bet']
 site_api_test = Site_Api()
-
+#In[]
 for site in site_list:
 
     site_api_test.site_api_betting_process(site = site  )
 
 log.info('all site : %s'%site_api_test.site_dict)
 
+
+#con = DataBaseInfo()
+#con.mysql_insert(Data =  site_api_test.site_dict  )
     #site_api_test.response_dict

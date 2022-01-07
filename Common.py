@@ -73,7 +73,10 @@ class Common:
             if float(odds) < 0:# 小於0, 跟china一樣, 只是多加1
                 confirm_odds = round(abs(int(1/ float(odds)*100))+100)/100  
             else:# odds+1
-                confirm_odds = round(float(odds) * 100 + 100) / 100
+                if float(odds) > 1:# 如果拿到 dec odds 值已經大於1 ,　就不用轉換
+                    confirm_odds = float(odds)
+                else:
+                    confirm_odds = round(float(odds) * 100 + 100) / 100
         elif odds_type in ['US','Indo'] :
             if float(odds) < 0:
                 if float(odds) >= 0.79:# 大於等於 0.79無條件進位
@@ -94,7 +97,7 @@ class Common:
                 confirm_odds = float(odds)
         elif odds_type == 'MY':
             confirm_odds = float(odds)
-
+        confirm_odds = f'{confirm_odds:.2f}'# 0.1 轉乘 0.10
         return confirm_odds
 
 
@@ -115,7 +118,7 @@ class Env:
         'Bbin': 'http://ismart.playbooksb.com/apilogin', '12Bet': 'http://ismart.wew77.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
         'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.fx9888.com/apilogin',
-        'Tlc': 'http://ismart.1731788.com/apilogin' , 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
+        'Fun88' : 'http://ismart.fun88.com/apilogin', 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
         'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' ,
         
           },

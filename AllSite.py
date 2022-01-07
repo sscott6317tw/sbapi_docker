@@ -21,8 +21,8 @@ class Site_Api(Env):
         self.response_dict = {}
         # 登入
         try:
-            if site in ['Xtu168']:
-                login_user = 'qatest04'
+            if site in ['Xtu168','Senibet', 'Yibo', 'Alog', 'Fun88', '11Bet']:
+                login_user = 'qatest03'
             else:
                 login_user = 'twqa09'
             self.site_dict[site] = self.response_dict
@@ -30,7 +30,7 @@ class Site_Api(Env):
             url = self.api_url_dict[device][site]     ,
             central_account='web.desktop', central_password='1q2w3e4r', site = site )
   
-            self.log.info('login : %s'%api)
+            #self.log.info('login : %s'%api)
             if api is False:
                 assert False
             #self.response_status['url'] = api.url
@@ -43,6 +43,20 @@ class Site_Api(Env):
 
             return False
 
+        try:
+            api.set_odds_type(odds_type = 'Dec')
+            self.response_dict['UserProfile'] = 'OK'
+
+        
+        except Exception as e:
+            print(e)
+            self.log.error(' %s set_odds_type fail '%self.login_site ) 
+            self.response_dict['UserProfile'] = 'False'
+
+            
+            return False
+        
+        
         try:
             api.ShowAllOdds( )
 
@@ -97,11 +111,11 @@ log = create_logger(r"\AutoTest", 'test')
 site_list = list(Env().api_url_dict['mobile'].keys())
 
 
-site_list = ['12Bet']
+#site_list = ['Alog']
 site_api_test = Site_Api()
 #In[]
 for site in site_list:
-
+    log.info('site : %s'%site)
     site_api_test.site_api_betting_process(site = site  )
 
 log.info('all site : %s'%site_api_test.site_dict)

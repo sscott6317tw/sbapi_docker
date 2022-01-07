@@ -777,7 +777,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     bet_team_index 是拿來 要做 betttype 的 哪個bet choice , 一個bettype 下 正常會有 bet_team_1 , bet_team_2 ...甚至更多
     assign_list 是用來指定 bettype下注, 空字串就是不用,走random ,有值的話 , key 為 market value為
     '''
-    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',assign_list='',times=''):
+    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',times=''):
         import random
         '''
         SportName 和 gameid 之後 做動態傳入,目前寫死 
@@ -788,189 +788,139 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
         len_Match_dic= len(self.Match_dict)
         logger.info('len_Match_dict : %s'%len_Match_dic)
-        if assign_list == '':# 預設為字串 ,使用隨機l
-            try:
-                data_str = ""# 需loop 慢慢加起來
-                for index_key in self.Match_dict.keys():#index_key 為 數值 ,一個 match 比賽 , 就是一個key
-                    #logger.info('index_key : %s'%index_key)
-                    Match = self.Match_dict[index_key]# key 為 Oddsid ,value為 字典,涵蓋 各種 資訊
-                    #logger.info('len : %s'%len(Match))
+       
+        try:
+            data_str = ""# 需loop 慢慢加起來
+            for index_key in self.Match_dict.keys():#index_key 為 數值 ,一個 match 比賽 , 就是一個key
+                #logger.info('index_key : %s'%index_key)
+                Match = self.Match_dict[index_key]# key 為 Oddsid ,value為 字典,涵蓋 各種 資訊
+                #logger.info('len : %s'%len(Match))
 
-                    Match_key_list = list(Match.keys())# list裡面放 bettype
+                Match_key_list = list(Match.keys())# list裡面放 bettype
 
-                    retry_count = 0
-                    while True:
-                        ran_index = random.randint(0, len(Match_key_list) -1  )
-                        Ran_Match_id =  Match_key_list[ran_index]# 隨機取出 odds id
-                        logger.info('Ran_Match_id: %s'%Ran_Match_id)
-                    
-                        BetTypeId = Match[Ran_Match_id]['BetTypeId']
-
-                        if BetTypeId not in already_list:
-                            logger.info('BetTypeId: %s 沒有投注過 ,成立'%BetTypeId)
-                            break
-                        logger.info('BetTypeId: %s 已經存在過注單裡 ,retry : %s'%(BetTypeId, retry_count ))
-                        retry_count = retry_count + 1
-                        if retry_count >= 10:   
-                            break
-
-                    Matchid = Match[Ran_Match_id]['MatchId']
-                    Team1 = Match[Ran_Match_id]['Team1']
-                    Team2 = Match[Ran_Match_id]['Team2']
-                    try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
-                        odds = Match[Ran_Match_id]['odds_%s'%bet_team_index]
-                    except:
-                        odds = Match[Ran_Match_id]['odds_0']
-                    
-                    try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
-                        bet_team = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
-                    except:
-                        bet_team = Match[Ran_Match_id]['bet_team_0']
-                    
-                    oddsid = Ran_Match_id
+                retry_count = 0
+                while True:
+                    ran_index = random.randint(0, len(Match_key_list) -1  )
+                    Ran_Match_id =  Match_key_list[ran_index]# 隨機取出 odds id
+                    logger.info('Ran_Match_id: %s'%Ran_Match_id)
+                
                     BetTypeId = Match[Ran_Match_id]['BetTypeId']
-                    
-                    Line = Match[Ran_Match_id]['Line']
-                    if  Line == 0:
-                        Line = ''
+
+                    if BetTypeId not in already_list:
+                        logger.info('BetTypeId: %s 沒有投注過 ,成立'%BetTypeId)
+                        break
+                    logger.info('BetTypeId: %s 已經存在過注單裡 ,retry : %s'%(BetTypeId, retry_count ))
+                    retry_count = retry_count + 1
+                    if retry_count >= 10:   
+                        break
+
+                Matchid = Match[Ran_Match_id]['MatchId']
+                Team1 = Match[Ran_Match_id]['Team1']
+                Team2 = Match[Ran_Match_id]['Team2']
+                try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
+                    odds = Match[Ran_Match_id]['odds_%s'%bet_team_index]
+                except:
+                    odds = Match[Ran_Match_id]['odds_0']
                 
-                    #if index > 2 and set_bet == 1:#串三個即可 . set_bet = 1代表
-                        #break
-
-                    '''
-                    parlay
-                    其他sport 拿到的 odds 需轉成 Dec Odds , Cricket 原本就是 dec odds所以不做轉換 
-                    5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
-                    '''
-                    if 'parlay' not in self.bet_type : # single odds 先不轉
-                        #odds = str(self.Odds_Tran(odds,odds_type=self.odds_type)).rstrip('0').rstrip('.')
-                        bet_stake = 1
-                        pass
-                        
-                    else:# parlay
-                        bet_stake = ''
-
-                        if  self.gameid != 50:# cricket 的不用轉 
-                            if BetTypeId not in [5, 15]:#  5: Ft 1x2 , 15: 1H 1x2 他們是 屬於Dec Odds
-                                odds = self.Odds_Tran(odds,odds_type=self.odds_type)
-                                logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
-                    logger.info('BetTypeId : %s'%BetTypeId)
-                    try:
-                        data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
-                        ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
-                        ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
-                        ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
-                        ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line}&\
-                        ItemList[{index_key}][hdp2]=0&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
-                        ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
-                        Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,
-                        Line = Line, bet_type = "OU", bet_stake = bet_stake )
-                    except Exception as e:
-                        logger.error('data_format: %s'%e)
-
-                    data_str = data_str + data_format + '&'
-                    '''
-                    parlay 串多少match 邏輯
-                    當 index 到了 總長度 的最後, 須把 combo_str 家回data裡
-                    '''
-                    if index_key == len_Match_dic -1 :
-                        if 'parlay'  in self.bet_type :# parlay
-                            if parlay_type == '2':# system parlay ,的total stake 要根據 長度 來做動態 計算
-                                TotalStake = len_Match_dic - 3 +  3# 如果 總長度 為4 . 4- 3  +  4
-                            else: # Mix parlay 
-                                TotalStake = int(Parlay_dict['1'])
-                            if len_Match_dic > 3:
-                                if parlay_type == '1':
-                                    combo_type = 4
-                                else:
-                                    combo_type = 1
-                            else:
-                                combo_type = parlay_type
-                            combo_str = "ComboLists[0][Type]={combo_type}&ComboLists[0][BetCount]={parlay_value}&ComboLists[0][Stake]=1&Combi=false&IsAnyOdds=false&\
-                            TotalStake={TotalStake}".format(combo_type=combo_type, parlay_value= Parlay_dict[parlay_type],TotalStake = TotalStake )
-                            
-                            data_str = data_str + combo_str
-                        else:# single
-
-                            combo_str = "&ItemList[0][Minbet]=1"
-
-                            data_str = data_str + combo_str
-                            
-                            r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
-                                    headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
-                            try:
-                                logger.info('GetTickets OK')
-                            except:
-                               logger.error('Single Bet Get Ticket 有誤')
-                               return 'GetTickets False'
-                            if index_key == 0:
-                                break 
-
-                    
-                    #self.Odds_dict[Matchid] = odds 
-                    #self.BetTypeId_list.append(BetTypeId)
+                try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
+                    bet_team = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                except:
+                    bet_team = Match[Ran_Match_id]['bet_team_0']
                 
-                #logger.info('BetTypeId_list: %s'%self.BetTypeId_list)
-                #logger.info('OddsId :%s'%self.Odds_dict)
-            except Exception as e:
-                logger.error('DoplaceBet: %s'%e)
-        
-        else:# 指定 betlist 投注
-            Match_dict = self.Return_Bet_dict(assign_list)
-            data_str = ""
-            for index_key in Match_dict.keys():
+                oddsid = Ran_Match_id
+                BetTypeId = Match[Ran_Match_id]['BetTypeId']
                 
-                oddsid = list(Match_dict[index_key].keys())[0]
-                BetTypeId = Match_dict[index_key][oddsid]['BetTypeId']
-                Matchid = Match_dict[index_key][oddsid]['MatchId']
-                Team1 = Match_dict[index_key][oddsid]['Team1']
-                Team2 = Match_dict[index_key][oddsid]['Team2']
-                
-                Line = Match_dict[index_key][oddsid]['Line']
+                Line = Match[Ran_Match_id]['Line']
                 if  Line == 0:
                     Line = ''
-                
-                try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
-                    odds = Match_dict[index_key][oddsid]['odds_%s'%bet_team_index]
-                except:
-                    odds = Match_dict[index_key][oddsid]['odds_0']
-                
-                try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
-                    bet_team = Match_dict[index_key][oddsid]['bet_team_%s'%bet_team_index]
-                except:
-                    bet_team = Match_dict[index_key][oddsid]['bet_team_0']
+            
+                #if index > 2 and set_bet == 1:#串三個即可 . set_bet = 1代表
+                    #break
 
+                '''
+                parlay
+                其他sport 拿到的 odds 需轉成 Dec Odds , Cricket 原本就是 dec odds所以不做轉換 
+                5: Ft 1x2 , 15: 1H 1x2(原本就是 dec odds, 不用轉) 
+                '''
+                if 'parlay' not in self.bet_type : # single odds 先不轉
+                    #odds = str(self.Odds_Tran(odds,odds_type=self.odds_type)).rstrip('0').rstrip('.')
+                    bet_stake = 1
+                    pass
+                    
+                else:# parlay
+                    bet_stake = ''
+
+                    if  self.gameid != 50:# cricket 的不用轉 
+                        if BetTypeId not in [5, 15]:#  5: Ft 1x2 , 15: 1H 1x2 他們是 屬於Dec Odds
+                            odds = self.Odds_Tran(odds,odds_type=self.odds_type)
+                            logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
+                logger.info('BetTypeId : %s'%BetTypeId)
                 try:
-                    data_format = "ItemList[{index_key}][type]=parlay&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
+                    data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                     ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
-                    ItemList[{index_key}][stake]=&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
+                    ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
                     ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
                     ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line}&\
                     ItemList[{index_key}][hdp2]=0&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                     ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
-                    Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,Line = Line )
+                    Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,
+                    Line = Line, bet_type = "OU")
                 except Exception as e:
                     logger.error('data_format: %s'%e)
 
                 data_str = data_str + data_format + '&'
-                if index_key == len(Match_dict) -1 :
-                    if parlay_type == '2':# system parlay ,的total stake 要根據 長度 來做動態 計算
-                        TotalStake = len_Match_dic - 3 +  3# 如果 總長度 為4 . 4- 3  +  4
-                    else: # Mix parlay 
-                        TotalStake = int(Parlay_dict['1'])
-                    if len_Match_dic > 3:
-                        if parlay_type == '1':
-                            combo_type = 4
+                '''
+                parlay 串多少match 邏輯
+                當 index 到了 總長度 的最後, 須把 combo_str 家回data裡
+                '''
+                if index_key == len_Match_dic -1 :
+                    if 'parlay'  in self.bet_type :# parlay
+                        if parlay_type == '2':# system parlay ,的total stake 要根據 長度 來做動態 計算
+                            TotalStake = len_Match_dic - 3 +  3# 如果 總長度 為4 . 4- 3  +  4
+                        else: # Mix parlay 
+                            TotalStake = int(Parlay_dict['1'])
+                        if len_Match_dic > 3:
+                            if parlay_type == '1':
+                                combo_type = 4
+                            else:
+                                combo_type = 1
                         else:
-                            combo_type = 1
-                    else:
-                        combo_type = parlay_type
-                    combo_str = "ComboLists[0][Type]={combo_type}&ComboLists[0][BetCount]={parlay_value}&ComboLists[0][Stake]=1&Combi=false&IsAnyOdds=false&\
-                    TotalStake={TotalStake}".format(combo_type = combo_type, parlay_value= Parlay_dict[parlay_type] ,TotalStake =TotalStake )
-                    
-                    data_str = data_str + combo_str
-                self.BetTypeId_list.append(oddsid)
-            logger.info('BetTypeId_list :%s'%self.BetTypeId_list)
+                            combo_type = parlay_type
+                        combo_str = "ComboLists[0][Type]={combo_type}&ComboLists[0][BetCount]={parlay_value}&ComboLists[0][Stake]=1&Combi=false&IsAnyOdds=false&\
+                        TotalStake={TotalStake}".format(combo_type=combo_type, parlay_value= Parlay_dict[parlay_type],TotalStake = TotalStake )
+                        
+                        data_str = data_str + combo_str
+                    else:# single
+
+                        combo_str = "&ItemList[0][Minbet]=1"
+
+                        data_str = data_str + combo_str
+                        
+                        r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
+                                headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                        try:
+                            logger.info('GetTickets OK')
+                            Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict
+                            for arg_ in Data.keys():
+                                if arg_ == 'Minbet':
+                                    self.min_stake = Data['Minbet']
+                                    logger.info('GetTickets Minbet: %s'%self.min_stake)
+                                    break
+                        except:
+                            logger.error('Single Bet Get Ticket 有誤')
+                            return 'GetTickets False'
+                        if index_key == 0:
+                            break 
+
+                
+                #self.Odds_dict[Matchid] = odds 
+                #self.BetTypeId_list.append(BetTypeId)
+            
+            #logger.info('BetTypeId_list: %s'%self.BetTypeId_list)
+            #logger.info('OddsId :%s'%self.Odds_dict)
+        except Exception as e:
+            logger.error('DoplaceBet: %s'%e)
+        
         
         retry_count = 0
 
@@ -985,6 +935,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 r = self.client_session.post(self.url  + '/BetParlay/DoplaceBet',data = post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
             else:# single bet
+                post_data = data_format+ "&ItemList[0][stake]={bet_stake}".format(bet_stake=self.min_stake)
+
                 r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
             

@@ -601,7 +601,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     new_dict['MatchId'] = dict_['MatchId']
                     new_dict['BetTypeId'] = dict_['BetTypeId']
                     
-                    #new_dict['Line'] = dict_['Line']
+                    new_dict['Line'] = dict_['Line']
                     new_dict['Pty'] = dict_['Pty']
                     
                     Selecetion_key =  list(dict_['Selections'].keys())# 為一個betype 下面 所有的bet choice
@@ -737,7 +737,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         self.order_value['odds_type'] = self.odds_type
                     else:
                         self.order_value['odds_type'] = "Dec"
-                    self.order_value['LeagueName'] = self.MarketId[int(match_key)]['League']
+                    try: #給 DoplaceBet 使用的
+                        self.order_value['Line'] = self.Line
+                    except:
+                        pass
+                    self.order_value['LeagueName'] = self.MarketId[int(match_key)]['League'].replace(' ','').split('|')[0]
                     BetTypeId = self.MarketId[int(match_key)]['BetTypeId']
                     with open('bettype_id.csv', newline='') as csvfile: #抓取 Site 於什麼 Server Group
                     # 讀取 CSV 檔案內容
@@ -752,7 +756,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     self.order_value['BetChoice'] = self.betting_info['bet_team']
                     self.order_value['Odds'] = self.betting_info['odds']
                     
-                    logger.info('order_value  : %s'%self.order_value)
+                    logger.info('order_value : %s'%self.order_value)
                     #方便查看資料的
                     pass_txt = open('Config/pass.txt', 'a+')
                     pass_txt.write(str(self.order_value)+'\n')
@@ -774,8 +778,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 except:
                     return False
                    
-    def get_statement(self,tran_id=''):
-        pass   
     '''
     already_list 是有做過的bettype , 拿來 驗證 做過的bettype, 做 random bettype 5次 
     parlay_type 1 為 mix parlay , 2 為 Trixie (4 Bets) , 為空 為 Single bet
@@ -987,6 +989,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         else:
                             break
                     if retry == 10: #在最前面下注就失敗
+                        self.order_value = {}
                         self.order_value['LeagueName'] = self.MarketId[int(Ran_Match_id)]['League']
                         try:
                             r.text['Message']
@@ -1094,7 +1097,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         self.betting_info['oddsid'] = Ran_Match_id
                         self.betting_info['Pair/DecOdds'] = Match[Ran_Match_id]['Pty']
-                        
                         self.betting_info['Line'] = Match[Ran_Match_id]['Line']
                         if self.betting_info['Line'] == 0:
                             self.betting_info['Line1'] = ''
@@ -1284,6 +1286,34 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             pass
         r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = post_data,headers=self.headers)
         return r,post_data
+
+
+    def get_statement_info(self,transid): #用來抓取最後一個 TransID
+        #先抓取 Get statement 所需資訊
+        '''
+        try:
+            data_str = "RunningType=E" #固定帶入 E
+            r = self.client_session.get(self.url  + '/Running/GetRunningOVR',data = data_str.encode(),headers=self.headers)
+            responce_json = r.json() 
+        except Exception as e:
+            logger.error('mobile Get_Datatype Api Fail : %s'%str(e))
+            return False
+        data_str = 'datatype=%s'%responce_json['datatype']
+        '''
+        data_str = 'datatype=0'
+        reget = 0
+        while reget < 60:
+            r = self.client_session.get(self.url  + '/Running/GetEarly_ch?%s'%data_str,headers=self.headers)
+            if transid in r.text:
+                return r.text
+                #bets_list = r.text.replace(' ','').split('bets_title')
+                #del bets_list[0] #要先刪掉第 0 個，第 0 個不是注單資訊
+                #for responce in bets_list:
+                #    if transid in responce:
+                #        return responce
+            else:
+                time.sleep(1)
+                reget += 1
 
 class Desktop_Api(Login):    
     def __init__(self,client="",device="",user='',url= ''):

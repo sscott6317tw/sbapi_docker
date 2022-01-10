@@ -119,7 +119,7 @@ class Env:
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
         'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.fx9888.com/apilogin',
         'Fun88' : 'http://ismart.fun88.com/apilogin', 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
-        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' ,
+        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 'Tlc': 'http://ismart.1731788.com/apilogin' ,
         
           },
         

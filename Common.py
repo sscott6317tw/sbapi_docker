@@ -1,5 +1,5 @@
 #In[]
-import requests
+import requests,subprocess
 from selenium import webdriver
 import threading,time
 
@@ -126,3 +126,11 @@ class Env:
         
         'desktop': {'W88' : 'https://alicantemkt.w2sports.com/onelogin.aspx'}
         }
+
+    def Allure_Report(self):# 跑完生成allure json檔後, 執行該方式 去生成報告
+        popen_path = 'allure generate reports -o allure_report/ --clean'
+        self.log.info(popen_path)
+        p = subprocess.Popen(popen_path,stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+        shell=True, universal_newlines=True)
+        self.log.info( p.communicate())
+        return p.communicate()

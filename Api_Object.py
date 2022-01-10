@@ -498,6 +498,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     type 帶 test 就 可以 忽略 testing 比賽  ,bet_type 可帶 其他(ex: parlay)
     '''
     def ShowAllOdds(self,type='',market=['e'],filter='',sport='Soccer',bet_type='OU'):# 取得 MatchId 傳給 GetMarket , 還有取得 TeamN 回傳給 DoplaceBet  的 home/away
+        self.MatchId = {} #先清空
         
         # e為 早盤, t為 today
         #market = 't'# 預設 today
@@ -773,7 +774,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #logger.info('self.post_data: %s'%self.post_data)
             if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed","is closed","System Error","temporarily closed"] ):
                 
-                logger.info('self.post_data: %s'%self.post_data)
+                #logger.info('self.post_data: %s'%self.post_data)
                 return Itemdict['Message']
             else:
                 pass
@@ -825,14 +826,15 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 except:
                     return False
                    
-        
+    def get_statement(self,tran_id=''):
+        pass   
     '''
     already_list 是有做過的bettype , 拿來 驗證 做過的bettype, 做 random bettype 5次 
     parlay_type 1 為 mix parlay , 2 為 Trixie (4 Bets) , 為空 為 Single bet
     bet_team_index 是拿來 要做 betttype 的 哪個bet choice , 一個bettype 下 正常會有 bet_team_1 , bet_team_2 ...甚至更多
     assign_list 是用來指定 bettype下注, 空字串就是不用,走random ,有值的話 , key 為 market value為
     '''
-    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',times=''):
+    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id=''):
         import random
         '''
         SportName 和 gameid 之後 做動態傳入,目前寫死 
@@ -852,14 +854,32 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 #logger.info('len : %s'%len(Match))
 
                 Match_key_list = list(Match.keys())# list裡面放 bettype
-
+                if bettype_id != '':
+                    from random import shuffle #用來把 list 打亂可以不用一值下同一場比賽
+                    shuffle(Match_key_list)
+                    find_bet_type_id = False
+                    for Match_key in Match_key_list:
+                        if Match[Match_key]['BetTypeId'] == bettype_id:
+                            Match_key_list = []
+                            Match_key_list.append(Match_key)
+                            find_bet_type_id = True
+                            break
+                        else:
+                            pass
+                    if find_bet_type_id == False:
+                        return "No BetType ID"
+                else:
+                    pass
                 retry_count = 0
                 while True:
+                    self.betting_info = {} #儲存我下注的值 
+
                     ran_index = random.randint(0, len(Match_key_list) -1  )
                     Ran_Match_id =  Match_key_list[ran_index]# 隨機取出 odds id
                     logger.info('Ran_Match_id: %s'%Ran_Match_id)
                 
                     BetTypeId = Match[Ran_Match_id]['BetTypeId']
+                    self.betting_info['Pair/DecOdds'] = Match[Ran_Match_id]['Pty'] #抓取 Pair or Dec Odds
                     logger.info('BetTypeId: %s'%BetTypeId)
 
                     if BetTypeId not in already_list:
@@ -875,11 +895,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 Team2 = Match[Ran_Match_id]['Team2']
                 try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
                     odds = Match[Ran_Match_id]['odds_%s'%bet_team_index]
+                    self.betting_info['odds'] = Match[Ran_Match_id]['odds_%s'%bet_team_index]
                 except:
                     odds = Match[Ran_Match_id]['odds_0']
                 
                 try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
                     bet_team = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                    self.betting_info['bet_team'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
                 except:
                     bet_team = Match[Ran_Match_id]['bet_team_0']
                 
@@ -912,7 +934,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 logger.info('BetTypeId : %s'%BetTypeId)
                 try:
                     data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
-                    ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
+                    ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
                     ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
                     ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
                     ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
@@ -966,9 +988,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             self.Line = self.ticket_Data['Line']
                             self.Hdp1 = self.ticket_Data['Hdp1']
                             self.Hdp2 = self.ticket_Data['Hdp2']
-
-
-                        
+                            try:
+                                self.Hscore = self.ticket_Data['LiveHomeScore']
+                                self.Asocre = self.ticket_Data['LiveAwayScore']
+                            except:
+                                self.Hscore = '0'
+                                self.Asocre = '0'
                         except:
                             self.error_msg = r.text
                             logger.error('Single Bet Get Ticket 有誤 : %s'%self.error_msg)
@@ -999,12 +1024,67 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 r = self.client_session.post(self.url  + '/BetParlay/DoplaceBet',data = self.post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
             else:# single bet
-                
-                
                 # 這裡把 get_ticket拿到的 資訊 , 在加進  post_data
                 self.post_data = data_format+ "&ItemList[0][stake]={bet_stake}&ItemList[0][Guid]={Guid}&\
-                ItemList[0][Line]={Line}&ItemList[0][hdp1]={hdp1}&ItemList[0][hdp2]={hdp2}".format(bet_stake=self.min_stake
-                ,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2 )
+                ItemList[0][Line]={Line}&ItemList[0][hdp1]={hdp1}&ItemList[0][hdp2]={hdp2}&ItemList[0][Hscore]={Hscore}&ItemList[0][Ascore]={Ascore}".format(bet_stake=self.min_stake
+                ,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre)
+                if self.site != '':
+                    r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = self.post_data.encode(),
+                    headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                else:
+                    retry = 0
+                    while retry < 10 :
+                        r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = self.post_data.encode(),headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                        if "please try again" in r.text :
+                            time.sleep(0.5)
+                            retry += 1
+                        elif "Your session has been terminated" in r.text:
+                            if "nova88" in self.url:
+                                time.sleep(10)
+                            self.mobile_login(user=self.user,central_account='web.desktop',central_password='1q2w3e4r')
+                        else:
+                            break
+                    if retry == 10: #在最前面下注就失敗
+                        self.order_value['LeagueName'] = self.MarketId[int(Ran_Match_id)]['League']
+                        try:
+                            r.text['Message']
+                        except:
+                            repspone_json = r.json()
+                            Data = repspone_json['Data']['ItemList'][0]
+                            self.order_value['Message'] = Data['Message']
+                        self.order_value['MatchID'] = Matchid
+                        self.order_value['oddsid'] = Ran_Match_id
+                        self.order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
+                        self.order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                        return "Betting Fail",str(self.order_value)
+
+                    retry = 0
+                    while retry < 6: 
+                        betting_response = self.Betting_response(response=r, times=times)
+                        if betting_response != True and betting_response != False:
+                            if "is closed" in betting_response or "System Error" in betting_response or "is temporarily closed" in betting_response:
+                                bettype_is_closed = True
+                                retry = 6
+                                break
+                            elif retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
+                                self.post_data = new_post_data
+                                r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry) #現在只為了 Single betting 新增
+                            else:
+                                r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry) #現在只為了 Single betting 新增
+                            retry += 1
+                        else:
+                            break
+                    if retry == 6:
+                        self.order_value['LeagueName'] = self.MarketId[int(Ran_Match_id)]['League']
+                        self.order_value['Message'] = str(betting_response)
+                        self.order_value['MatchID'] = Matchid
+                        self.order_value['oddsid'] = Ran_Match_id
+                        self.order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
+                        self.order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                        return "Betting Fail",str(self.order_value)
+                    else:
+                        return "Betting Pass",str(self.order_value)
+                
 
                 
                 self.req_url = '/BetV2/ProcessBet'

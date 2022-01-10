@@ -1,7 +1,6 @@
 #In[]
 
 from collections import defaultdict
-from logging import log
 import execjs
 import hashlib
 from PIL import Image
@@ -38,9 +37,14 @@ class Login(Common):#取得驗證碼邏輯
 
             login_rseult = mobile_api.mobile_login(user=user,central_account=central_account,
             central_password=central_password)# 初始 login為 None 一定先登入
-            if login_rseult is False:
+            
+            if login_rseult is False and site == '':
                 return False
             
+
+            '''
+            All Site api 成功或 失敗 都是 回傳 mobile_api , 是用 erroe code msg 來給 AllSite 使用
+            '''
             return  mobile_api
         else: #都是桌機
             desktop_api = Desktop_Api(device=device,user=user,url=url,client = client)
@@ -173,6 +177,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict = defaultdict(list)# 用來 存放壓力測試 街口的 數據
         self.odds_type = 'Dec' #先預設為空，避免沒有執行 Odds type Change 就下注
         self.site = site
+        self.error_msg = ''# 用來判斷 成功訊息 (AllSite.py)
+        
+
+
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
     '''
@@ -238,6 +246,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     athena 需叫 本地js , api site 直接 在 url 後面增加query 參數
     '''
     def mobile_login(self,user,central_account='',central_password=''):# Mobile Login街口邏輯
+        
         self.user = user
         if self.login_type  == 'athena':# athena 登入
             common_js = execjs.compile(self.js_from_file('./login_js/mobile.js'))# 讀取 login js檔
@@ -296,10 +305,23 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 return False
         
         else: #api site登入
+
+            '''
+            這邊 api site 登入 , 如果登入 成功會回傳 True , 其餘失敗的 都會回傳 字串, 不會回傳 False, 因為 ALL Site 要接失敗訊息
+            '''
+            start = time.perf_counter()# 計算請求時間用
+            try:
+                r = self.client_session.get(self.url)
+                session_url = r.url # api site 需先拿到 session url 在做登入
+                logger.info('登入前 session url: %s'%session_url)
+            except Exception as e:
+                logger.error(' url 請求 有誤 : %s'%e)
+                self.error_msg = 'login get error : %s'%e
+                return self.error_msg
             
-            r = self.client_session.get(self.url)
-            session_url = r.url # api site 需先拿到 session url 在做登入
-            logger.info('登入前 session url: %s'%session_url)
+            
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+            
             
             #LicLogin , DepositLogin
             login_query = 'LicLogin/index?lang=en&txtUserName={user}&Password=1q2w3e4r&token=&skin=&CentralAccount={central_account}&CentralPassword={central_password}&menutype=&sportid=&leaguekey=&matchid=&isAPP=\
@@ -312,15 +334,22 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] = 'XMLHttpRequest'
             self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
             
-            r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
-            
+            try:# 這邊 try login 如果遇到 503 或者別問題
+                r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
+            except Exception as e:
+                self.error_msg = 'Login 接口: %s'%e
+                return self.error_msg
+
+
+
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
             logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
-            if 'errorcode' in self.url:
-                return False
-            elif 'Message' in self.url:
-                return False
             
+
+            if 'Message' in self.url:
+                self.error_msg = self.url.split('Message=')[1]
+                return self.error_msg
+
             '''
             api site 不是每個 登入後的都會帶 session url ,ex: bbin
             這會再 showallodds 有不同的判斷
@@ -329,7 +358,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.api_site = 'web'
             else:
                self.api_site = 'odds provider' 
-            return 'Login True'
+            return True
 
     def get_contirbutetor(self ):# /main/GetContributor
         
@@ -378,7 +407,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #self.headers['Cookie'] = "ASP.NET_SessionId=zsas5pqboaj1eb30novyhuda" 
         
         #logger.info('NET_SessionId: %s'%self.client_session.cookies.get_dict()['ASP.NET_SessionId'])
-        r = self.client_session.post(self.url  + '/setting/SaveUserProfile',data=data,headers=self.headers)
+        self.req_url = '/setting/SaveUserProfile'
+        start = time.perf_counter()# 計算請求時間用
+        r = self.client_session.post(self.url  + self.req_url  ,data=data,headers=self.headers)
+        self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
         try:
             repspone_json = r.json()
             ErrorCode = repspone_json['ErrorCode']
@@ -386,9 +418,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('set_odds_type ErrorCode: %s '%(ErrorCode ) )
             return True
         except:
-            logger.error('response :%s'%r.text )
-            self.stress_dict['response'].append(r.text) 
-            logger.error('Setting Odds Type Api Fail')
+
+            self.error_msg = r.text
+            logger.error('Setting Odds Type Api Fail response :%s'%self.error_msg )
+            #self.stress_dict['response'].append(r.text) 
             return False
 
     def statement_running(self):
@@ -489,11 +522,20 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         logger.info('Bearer_data: %s'%Bearer_data)
                         
                         self.headers['Authorization'] = 'Bearer  %s'%Bearer_data
-                    r = self.client_session.get('http://oplg1.fast4indo.com/' + '/Odds/ShowAllOddsApi?'+data,headers=self.headers)
+                    
+                    self.req_url = 'http://oplg1.fast4indo.com/' + '/Odds/ShowAllOddsApi?'+data
+                    
+                    start = time.perf_counter()# 計算請求時間用
+                    r = self.client_session.get(self.req_url  ,headers=self.headers)
+                    self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+
+
                     repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json)   
             except:
-                logger.info('mobile ShowAllOdds Api Fail')
+                self.error_msg = r.text
+                logger.info('mobile ShowAllOdds Api Fail : %s'%self.error_msg)
+                
                 return False
             
             try:
@@ -572,11 +614,17 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             else:
                 data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":0}
             try:
-                r = self.client_session.post(self.url  + '/Odds/GetMarket',data=data,headers=self.headers)
+
+                self.req_url = '/Odds/GetMarket'
+                start = time.perf_counter()# 計算請求時間用
+                r = self.client_session.post(self.url  + self.req_url ,data=data,headers=self.headers)
+                self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+
                 repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json) 
             except:
-                logger.error('mobile GetMarket Api Fail')
+                self.error_msg = r.text 
+                logger.error('mobile GetMarket Api Fail : %s'%self.error_msg)
                 return False
             try:
                 # 回傳的 資料結構不同
@@ -600,7 +648,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     new_dict['MatchId'] = dict_['MatchId']
                     new_dict['BetTypeId'] = dict_['BetTypeId']
                     
-                    #new_dict['Line'] = dict_['Line']
+                    new_dict['Line'] = dict_['Line']
                     new_dict['Pty'] = dict_['Pty']
                     
                     Selecetion_key =  list(dict_['Selections'].keys())# 為一個betype 下面 所有的bet choice
@@ -631,8 +679,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('self.Match_dict 2: %s'%len(self.Match_dict[2]))
 
     def Betting_response(self,response,times,BetTypeId=''):# 針對 投注 回復 做解析
-        repspone_json = response.json()
-        
+        try:
+            repspone_json = response.json()
+        except:
+            self.error_msg = response.text
+            return False
+
         if 'parlay'  in self.bet_type:
             Data = repspone_json['Data']
             response_code = str(Data['Code'])
@@ -897,8 +949,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         data_str = data_str + combo_str
                         
-                        r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
+                        self.req_url = '/BetV2/GetTickets'
+                        
+                        start = time.perf_counter()# 計算請求時間用
+                        r = self.client_session.post(self.url  + self.req_url  , data = data_str.encode(),
                                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                        self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+                        
                         try:
                             logger.info('GetTickets OK')
                             self.ticket_Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict
@@ -913,7 +970,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         
                         except:
-                            logger.error('Single Bet Get Ticket 有誤')
+                            self.error_msg = r.text
+                            logger.error('Single Bet Get Ticket 有誤 : %s'%self.error_msg)
                             return 'GetTickets False'
                         if index_key == 0:
                             break 
@@ -948,10 +1006,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 ItemList[0][Line]={Line}&ItemList[0][hdp1]={hdp1}&ItemList[0][hdp2]={hdp2}".format(bet_stake=self.min_stake
                 ,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2 )
 
-                r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = self.post_data.encode(),
+                
+                self.req_url = '/BetV2/ProcessBet'
+                start = time.perf_counter()# 計算請求時間用
+                r = self.client_session.post(self.url  + self.req_url ,data = self.post_data.encode(),
                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                
+                self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+                        
             
-            return self.Betting_response(response=r, times=times)
+            return self.Betting_response(response = r, times=times)
 
             #return betting_response
 

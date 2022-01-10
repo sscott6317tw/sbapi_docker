@@ -1028,9 +1028,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.post_data = data_format+ "&ItemList[0][stake]={bet_stake}&ItemList[0][Guid]={Guid}&\
                 ItemList[0][Line]={Line}&ItemList[0][hdp1]={hdp1}&ItemList[0][hdp2]={hdp2}&ItemList[0][Hscore]={Hscore}&ItemList[0][Ascore]={Ascore}".format(bet_stake=self.min_stake
                 ,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre)
+                
                 if self.site != '':
-                    r = self.client_session.post(self.url  + '/BetV2/ProcessBet',data = self.post_data.encode(),
+                    self.req_url = '/BetV2/ProcessBet'
+                    start = time.perf_counter()# 計算請求時間用
+                    r = self.client_session.post(self.url  + self.req_url ,data = self.post_data.encode(),
                     headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+                    
+                    self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+                
+                
                 else:
                     retry = 0
                     while retry < 10 :
@@ -1087,12 +1094,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 
 
                 
-                self.req_url = '/BetV2/ProcessBet'
-                start = time.perf_counter()# 計算請求時間用
-                r = self.client_session.post(self.url  + self.req_url ,data = self.post_data.encode(),
-                headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
                 
-                self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
                         
             
             return self.Betting_response(response = r, times=times)

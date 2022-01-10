@@ -64,7 +64,7 @@ class mobile_api_betting:
                         return False
                     else:
                         self.log.info("無 More Odds 可下注")
-                    
+                        continue
 
                 mobile_api.GetMarket()
                 already_list = mobile_api.DoallbettypeBet(all_bet_choice=self.all_bet_choice,already_list=already_list)

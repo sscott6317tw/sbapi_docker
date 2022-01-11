@@ -3,9 +3,10 @@ import pymysql, time , datetime , json
 from  Logger import create_logger 
 
 class DataBaseInfo:
-    def __init__(self):
+    def __init__(self ,env_index):
         self.log = create_logger(r"\AutoTest", 'test')
-        self.host = 'localhost'
+        self.host_list = ['localhost', '192.168.70.57']
+        self.host = self.host_list[env_index]
         self.user = 'root'
         self.password = 'LF64qad32gfecxPOJ603'
 

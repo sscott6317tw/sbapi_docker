@@ -5,6 +5,7 @@ from collections import defaultdict
 from Common import Env
 from  Logger import create_logger 
 from Sql_Con import DataBaseInfo
+from Common import Common
 
 
 log = create_logger(r"\AutoTest", 'test')
@@ -236,9 +237,11 @@ if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 e
 else:
     log.info('All Site Pass')
     Status = 1
+node_type = Common().get_node_type()# 0 local , 1 remote
+
 
 try:
-    con = DataBaseInfo()
+    con = DataBaseInfo(env_index = int(node_type))
     con.mysql_insert(Data =  site_api_test.site_dict , Status = Status  )
 except Exception as e:
     log.error('DB 建立有誤 : %s'%e )

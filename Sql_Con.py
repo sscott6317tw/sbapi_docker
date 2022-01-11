@@ -3,11 +3,13 @@ import pymysql, time , datetime , json
 from  Logger import create_logger 
 
 class DataBaseInfo:
-    def __init__(self ,env_index):
+    def __init__(self ,env_index=1):
         self.log = create_logger(r"\AutoTest", 'test')
         self.host_list = ['localhost', '192.168.70.57']
         self.host = self.host_list[env_index]
-        self.user = 'root'
+        
+        self.user_list = ['root', 'kerr']
+        self.user = self.user_list[env_index]
         self.password = 'LF64qad32gfecxPOJ603'
 
         self.dbname = 'siteapi'
@@ -78,7 +80,6 @@ class DataBaseInfo:
             return False
 
 
-'''
+
 con = DataBaseInfo()
-con.mysql_select()
-'''
+

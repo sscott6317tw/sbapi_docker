@@ -190,13 +190,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request data'].append(request_data)
         start = time.perf_counter()
         #print(self.headers)
-        r = self.client_session.post(self.url  + func_url , data = request_data,headers=self.headers)
+    
+        r = self.client_session.post(self.url  + func_url, data = request_data,headers=self.headers)
         #self.url = r.url
-        self.stress_dict['request url'].append(self.url  + func_url)
+        self.stress_dict['request url'].append(self.req_url )
 
-        request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
-        logger.info("Request completed in %s s"%request_time )
-        self.stress_dict['request time'].append(request_time)
+        self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+        logger.info("Request completed in %s s"%self.request_time )
+        self.stress_dict['request time'].append(self.request_time)
 
         return r
 
@@ -209,13 +210,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request data'].append(request_data)
         start = time.perf_counter()
         #print(self.headers)
-        r = self.client_session.get(self.url  + func_url ,headers=self.headers)
+        
+        self.req_url = self.url  + func_url
+        
+        r = self.client_session.get(self.req_url ,headers=self.headers)
         #self.url = r.url
-        self.stress_dict['request url'].append(self.url  + func_url)
+        self.stress_dict['request url'].append(self.req_url)
 
-        request_time =  '{0:.4f} s'.format(time.perf_counter() - start) # 該次 請求的url 時間
-        logger.info("Request completed in %s s"%request_time )
-        self.stress_dict['request time'].append(request_time)
+        self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+        logger.info("Request completed in %s s"%self.request_time )
+        self.stress_dict['request time'].append(self.request_time)
 
         return r
 
@@ -450,8 +454,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         
         data = 'localtime=8'
         #self.headers['Referer'] = self.url
-    
-        r = self.stress_request_post(request_data= data, func_url = '/balance/GetAccountInfo' )
+ 
+
+        self.req_url = '/balance/GetAccountInfo'
+        r = self.stress_request_post(request_data= data, func_url = self.req_url)
 
         #r = self.client_session.post(self.url  + '/balance/GetAccountInfo', data=data,headers=self.headers)
        
@@ -459,14 +465,17 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             repspone_json = r.json()
             Bal = repspone_json['Data']['Bal']
             BCredit = repspone_json['Data']['BCredit']
-            self.stress_dict['response'].append('Bal: %s , BCredit: %s '%(Bal ,BCredit ) )
+            self.error_msg = 'Bal: %s , BCredit: %s '%(Bal ,BCredit ) 
+            self.stress_dict['response'].append(self.error_msg  )
             
-            logger.info('Bal: %s , BCredit: %s '%(Bal ,BCredit ))
+            logger.info(self.error_msg )
             return True
         except:
-            logger.error('url :%s'%r.url )
-            self.stress_dict['response'].append(r.text)
-            logger.error('mobile balance Api Fail')
+            self.error_msg = r.text
+            logger.error('balance error :%s'%self.error_msg )
+
+            self.stress_dict['response'].append(self.error_msg)
+
             return False
 
     def UpdateOdds (self):# /Odds/UpdateOdds
@@ -510,8 +519,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             
             try:# athen 和部分api的 ,走 一個邏輯
-                if self.login_type  == 'athena' or self.api_site =='web':# athena  
-                    r = self.stress_request_post(request_data= data, func_url = '/Odds/ShowAllOdds' )
+                if self.login_type  == 'athena' or self.api_site =='web':# athena   
+                    self.req_url = '/Odds/ShowAllOdds'
+                    r = self.stress_request_post(request_data= data, func_url = self.req_url )
 
                     #r = self.client_session.post(self.url  + '/Odds/ShowAllOdds',data=data,headers=self.headers)
                     repspone_json = r.json()
@@ -971,13 +981,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                         data_str = data_str + combo_str
                         
-                        self.req_url = '/BetV2/GetTickets'
                         
                         start = time.perf_counter()# 計算請求時間用
-                        r = self.client_session.post(self.url  + self.req_url  , data = data_str.encode(),
+                        r = self.client_session.post(self.url  + '/BetV2/GetTickets'  , data = data_str.encode(),
                                 headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
+
+                        self.req_list = []# 存放 ticket 和 betting 的 列表
                         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
-                        
+                        self.req_list.append(self.request_time )
+
+
                         try:
                             logger.info('GetTickets OK')
                             self.ticket_Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict
@@ -1030,14 +1043,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 ,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre)
                 
                 if self.site != '':
-                    self.req_url = '/BetV2/ProcessBet'
+                    self.req_url = ['/BetV2/GetTickets','/BetV2/ProcessBet'] #會寫個list, 是因為 ticket 和 betting 在同個fucn裡
+                    #self.req_url = '/BetV2/ProcessBet'
                     start = time.perf_counter()# 計算請求時間用
-                    r = self.client_session.post(self.url  + self.req_url ,data = self.post_data.encode(),
+                    r = self.client_session.post(self.url  + '/BetV2/ProcessBet' ,data = self.post_data.encode(),
                     headers=self.headers)# data_str.encode() 遇到中文編碼問題 姊法
                     
                     self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+                    self.req_list.append(self.request_time )
                 
-                
+
                 else:
                     retry = 0
                     while retry < 10 :
@@ -1454,6 +1469,7 @@ class Desktop_Api(Login):
             logger.info('response: %s'%repspone_json)
             return True
         except:
+            
             logger.info('desktop balance Api Fail')
             return False
     

@@ -22,8 +22,10 @@ class DataBaseInfo:
         return self._conn
     
 
-
-    def mysql_insert(self   , Data,  Site = 'AllSite' ):# response_data 為 一個dict , 存放 到 DB
+    '''
+    Status 1 為成功, 0 代表此次有錯誤
+    '''
+    def mysql_insert(self   , Data,  Site = 'AllSite' , Status= 1):# response_data 為 一個dict , 存放 到 DB
         try:
             db = self.db_con
             cursor = db.cursor()
@@ -36,7 +38,7 @@ class DataBaseInfo:
         try:
             date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sql = "INSERT INTO site_data "  + "(Site, Status,Create_date , Data) VALUES( '{Site}', '{Status}', '{Create_date}', '{Data}'  )".format(ID = 1, 
-            Site = Site , Status = 1 ,  Create_date = date_time ,  Data = json.dumps(Data)     )# json.dumps 將python 字典轉成  db 的 json型態
+            Site = Site , Status = Status ,  Create_date = date_time ,  Data = json.dumps(Data)     )# json.dumps 將python 字典轉成  db 的 json型態
             self.log.info('insert sql: %s'%sql)
             
             cursor.execute(sql)

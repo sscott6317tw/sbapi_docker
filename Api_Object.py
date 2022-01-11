@@ -504,9 +504,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         #market = 't'# 預設 today
         self.sport = sport
         self.bet_type = bet_type
+        if "nova88" in self.url:
+            bet_type = "OU"
+        else:
+            bet_type = bet_type
         self.gameid = self.game_mapping(self.sport)# 後面 get market 和 betting 就不用在多傳 gameid 參數了, 統一在這宣告
         for market in market:
-            data = 'GameId=%s&DateType=%s&BetTypeClass=%s&Gametype=0'%(self.gameid  ,market,self.bet_type)# 先寫死cricket, 之後優化
+            data = 'GameId=%s&DateType=%s&BetTypeClass=%s&Gametype=0'%(self.gameid  ,market,bet_type)# 先寫死cricket, 之後優化
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             
             try:# athen 和部分api的 ,走 一個邏輯

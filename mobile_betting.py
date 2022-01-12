@@ -47,8 +47,8 @@ class mobile_api_betting:
             mobile_api.set_odds_type(odds_type=str(odds_type))
         
             already_list = []
-            #bet_type_list = ['OU','more']
-            bet_type_list = ['more']
+            bet_type_list = ['OU','more']
+            #bet_type_list = ['more']
             for bet_type in bet_type_list:
                 print(self.match_id)
                 showallodds_result = mobile_api.ShowAllOdds(type='test',market=str(self.market[0]).lower(),filter=self.match_id,sport=self.sport,bet_type=bet_type)

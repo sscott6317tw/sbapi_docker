@@ -42,7 +42,7 @@ class DataBaseInfo:
             date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sql = "INSERT INTO site_data "  + "(Site, Status,Create_date , Data) VALUES( '{Site}', '{Status}', '{Create_date}', '{Data}'  )".format(ID = 1, 
             Site = Site , Status = Status ,  Create_date = date_time ,  Data = json.dumps(Data)     )# json.dumps 將python 字典轉成  db 的 json型態
-            self.log.info('insert sql: %s'%sql)
+            #self.log.info('insert sql: %s'%sql)
             
             cursor.execute(sql)
             db.commit()

@@ -60,7 +60,7 @@ class Site_Api(Env):
             self.response_dict['Login'] = response_data
 
 
-            ''''
+            '''
             這邊用意是把 剩下的 case 加到資料結構
             '''
             for case in self.case_list:
@@ -223,19 +223,15 @@ for site in site_list:
 
 
 #log.info('all site : %s'%site_api_test.site_dict)
-#log.info('letstalk : %s'%site_api_test.lets_talk)
-
-
-
-
+log.info('letstalk : %s'%site_api_test.lets_talk)
 
 
 if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 error
     Status = 0 # insert 狀態  錯誤
-    log.info('All Site Login Fail : %s'%site_api_test.lets_talk)
+    #log.info('All Site Login Fail : %s'%site_api_test.lets_talk)
 
 else:
-    log.info('All Site Pass')
+    log.info('All Site Pass : %s'%site_list )
     Status = 1
 node_type = Common().get_node_type()# 0 local , 1 remote
 
@@ -243,6 +239,7 @@ node_type = Common().get_node_type()# 0 local , 1 remote
 try:
     con = DataBaseInfo(env_index = int(node_type))
     con.mysql_insert(Data =  site_api_test.site_dict , Status = Status  )
+    log.info(' 此次 insert資料 OK' )
 except Exception as e:
     log.error('DB 建立有誤 : %s'%e )
 

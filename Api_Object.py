@@ -559,10 +559,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     TeamId2 = dict_['TeamId2']
                     LeagueId = dict_['LeagueId']
                     League_name = LeagueN[str(LeagueId)]
-
+                
                     if type == '':# 不能有test 的賽事 
-                        if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ):# 如果 不是要 針對test 然後 testing 又再 league ,不能串
-                            continue
+                        if len(NewMatch) == 1 : #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改
+                            pass
+                        else:
+                            if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ):# 如果 不是要 針對test 然後 testing 又再 league ,不能串
+                                continue
                     # type 帶 test 就 可以 忽略 testing 比賽 
                     team_name['Team1'] = TeamN[ str(TeamId1) ]
                     team_name['Team2'] = TeamN[str(TeamId2) ]
@@ -602,7 +605,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
     取得   MarketId(oddsid), Price(odds) , BetTypeId
     '''
-    def GetMarket(self):
+    def GetMarket(self,bettype_id=''):
         if 'parlay' in  self.bet_type:
             parlay_len = '3'
         else:
@@ -641,7 +644,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             NewOdds.append(SpMatch_market_odds)
                 else:
                     NewOdds = repspone_json['Data']['NewOdds']
-                
+                if bettype_id != '': #判段於此 MatchID 是否有我要的 Bettype ID
+                    if "'BetTypeId': %s"%bettype_id in str(NewOdds):
+                        pass
+                    else:
+                        continue
                 MatchId_value = self.MatchId[match_id]
                 
                 for dict_ in NewOdds:#list包字典# ,裡面 一個dict 會有 很多 marketid (Oddsid)要取得
@@ -666,18 +673,27 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     new_value = MatchId_value.copy()# 原本
                     new_value.update(new_dict)# 新的放進來
                     self.MarketId[MarketId] = new_value
-
+                    
                 Market_value = self.MarketId
-                self.Match_dict[index] = Market_value
-                if index == int(parlay_len) - 1:
-                    logger.info('串%s場即可'%parlay_len)
-                    #logger.info(self.MarketId)
-                    break
+                if bettype_id == '':
+                    self.Match_dict[index] = Market_value
+                    if index == int(parlay_len) - 1:
+                        logger.info('串%s場即可'%parlay_len)
+                        #logger.info(self.MarketId)
+                        break
+                else:
+                    self.Match_dict[0] = Market_value
+                    if index >= int(parlay_len) - 1:
+                        logger.info('串%s場即可'%parlay_len)
+                        #logger.info(self.MarketId)
+                        break
 
 
             except Exception as e:
                 logger.error('GetMarket: %s'%e)
                 return False
+        if bettype_id != '' and len(self.Match_dict) == 0:
+            return "No BetType ID"
         logger.info('self.Match_dict 0 : %s'%len(self.Match_dict[0] ))
         if int(parlay_len) ==3:
             logger.info('self.Match_dict 1 : %s'%len(self.Match_dict[1]))
@@ -840,7 +856,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     bet_team_index 是拿來 要做 betttype 的 哪個bet choice , 一個bettype 下 正常會有 bet_team_1 , bet_team_2 ...甚至更多
     assign_list 是用來指定 bettype下注, 空字串就是不用,走random ,有值的話 , key 為 market value為
     '''
-    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id=''):
+    def DoplaceBet(self,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id='',not_bettype_id=''): #not_bettype_id 是為了不要重複下到同一個 Bettype
         import random
         '''
         SportName 和 gameid 之後 做動態傳入,目前寫死 
@@ -860,22 +876,58 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 #logger.info('len : %s'%len(Match))
 
                 Match_key_list = list(Match.keys())# list裡面放 bettype
-                if bettype_id != '':
-                    from random import shuffle #用來把 list 打亂可以不用一值下同一場比賽
-                    shuffle(Match_key_list)
-                    find_bet_type_id = False
-                    for Match_key in Match_key_list:
-                        if Match[Match_key]['BetTypeId'] == bettype_id:
-                            Match_key_list = []
-                            Match_key_list.append(Match_key)
-                            find_bet_type_id = True
-                            break
-                        else:
-                            pass
-                    if find_bet_type_id == False:
-                        return "No BetType ID"
+                find_bet_type_id = False
+                if self.bet_type != 'more': #more 要排除小於 3 的 Bettype ID
+                    if bettype_id != '':
+                        from random import shuffle #用來把 list 打亂可以不用一值下同一場比賽
+                        shuffle(Match_key_list)
+                        for Match_key in Match_key_list:
+                            if Match[Match_key]['BetTypeId'] == bettype_id:
+                                Match_key_list = []
+                                Match_key_list.append(Match_key)
+                                find_bet_type_id = True
+                                break
+                            else:
+                                pass
+                        if find_bet_type_id == False:
+                            return "No BetType ID"
+                    elif not_bettype_id != '':
+                        for Match_key in Match_key_list:
+                            if Match[Match_key]['BetTypeId'] != int(not_bettype_id):
+                                Match_key_list = []
+                                Match_key_list.append(Match_key)
+                                find_bet_type_id = True
+                                break
+                            else:
+                                pass
+                        if find_bet_type_id == False:
+                            return "No Other BetType ID"
+                        pass
                 else:
-                    pass
+                    if not_bettype_id != '':
+                        for Match_key in Match_key_list:
+                            if Match[Match_key]['BetTypeId'] != int(not_bettype_id) and Match[Match_key]['BetTypeId'] >= 4:
+                                Match_key_list = []
+                                Match_key_list.append(Match_key)
+                                find_bet_type_id = True
+                                break
+                            else:
+                                pass
+                        if find_bet_type_id == False:
+                            return "No Other BetType ID"
+                        pass
+                    else:
+                        for Match_key in Match_key_list:
+                            if Match[Match_key]['BetTypeId'] >= 4:
+                                Match_key_list = []
+                                Match_key_list.append(Match_key)
+                                find_bet_type_id = True
+                                break
+                            else:
+                                pass
+                        if find_bet_type_id == False:
+                            return "No Other BetType ID"
+                        pass
                 retry_count = 0
                 while True:
                     self.betting_info = {} #儲存我下注的值 
@@ -1070,7 +1122,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         self.order_value['oddsid'] = Ran_Match_id
                         self.order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
                         self.order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
-                        return "Betting Fail",str(self.order_value)
+                        return str(self.order_value)
 
                     retry = 0
                     while retry < 6: 
@@ -1095,9 +1147,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         self.order_value['oddsid'] = Ran_Match_id
                         self.order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
                         self.order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
-                        return "Betting Fail",str(self.order_value)
+                        return str(self.order_value)
                     else:
-                        return "Betting Pass",str(self.order_value)
+                        return str(self.order_value)
                 
 
                 

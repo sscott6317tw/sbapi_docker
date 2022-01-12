@@ -1,7 +1,7 @@
 #In[]
 import requests,subprocess
 from selenium import webdriver
-import threading,time
+import threading,time, configparser
 
 class Common:
     '''
@@ -110,6 +110,17 @@ class Common:
         #print(list_)
         s = set(list_)
         return(list(s))
+
+    def get_config(self):
+        # 建立 ConfigParser
+        config = configparser.ConfigParser(comment_prefixes='/', allow_no_value=True)
+        config.read('config.ini', encoding="utf-8")
+        return config
+    
+    def get_node_type(self):# 0 為本地, 1 為 remote
+        node_type = self.get_config()['config']['node_type']
+
+        return node_type
 
 
 class Env:

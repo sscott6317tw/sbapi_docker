@@ -266,7 +266,7 @@ if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 e
 else:
     log.info('All Site Pass : %s'%site_list )
     log.info('Response Time : %s'%site_api_test.response_time_dict )
-    site_api_test.sort_req_time()
+    #site_api_test.sort_req_time()
     
     Status = 1
     

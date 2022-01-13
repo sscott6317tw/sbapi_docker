@@ -16,6 +16,12 @@ class Site_Api(Env):
         #self.response_dict = {} #defaultdict(list)#  用來存放 各site 各api 請求的 回復
         self.site_dict = {}# key 為 site , value 為 response_dict
         self.lets_talk = {} #記錄訊息用 
+
+        # key 為 api , value 為一個 二為陣列
+        self.response_time_dict = { 'Login':[], 'UserProfile': [] ,
+        'Balance': [] , 'ShowAllOdds': [], 'GetTickets': [] , 'GetMarket': [] , 'ProcessBet':[] }
+ 
+    
         self.log = log
 
         '''
@@ -24,6 +30,11 @@ class Site_Api(Env):
         self.case_list = [ 'UserProfile' ,'Balance' , 'ShowAllOdds', 'GetTickets' , 'GetMarket' , 'ProcessBet' ]
         #print( self.url_dict)
 
+    def retrun_2d_list(self ,site_name,  api_name , request_time): #回傳每次執行api 的 一個二為陣列 ,用來統計用
+        new_list = [site_name]
+        new_list.append(request_time)# 一個 陣列 [site, 秒數]
+        self.response_time_dict[api_name].append(new_list)
+    
     def site_api_betting_process(self , site ,device = 'mobile'):
         self.login_site = '%s - %s'%(device, site)
         self.response_dict = {}
@@ -50,6 +61,8 @@ class Site_Api(Env):
             request_time= api.request_time )
             
             self.response_dict['Login'] = response_data
+            
+            self.retrun_2d_list(site_name = site , api_name = 'Login' , request_time = api.request_time )
 
         
         except:
@@ -78,7 +91,7 @@ class Site_Api(Env):
             request_time= api.request_time ) 
 
             self.response_dict['UserProfile'] = response_data
-
+            self.retrun_2d_list(site_name = site , api_name = 'UserProfile' , request_time = api.request_time )
         
         except:
             self.log.error(' %s set_odds_type fail '%self.login_site ) 
@@ -99,7 +112,7 @@ class Site_Api(Env):
             request_time= api.request_time ) 
 
             self.response_dict['Balance'] = response_data
-
+            self.retrun_2d_list(site_name = site , api_name = 'Balance' , request_time = api.request_time )
         
         except Exception as e:
             self.log.error(' %s balance fail : %s '%(self.login_site ,e )) 
@@ -119,6 +132,8 @@ class Site_Api(Env):
 
             self.response_dict['ShowAllOdds'] = response_data
 
+            self.retrun_2d_list(site_name = site , api_name = 'ShowAllOdds' , request_time = api.request_time )
+
         except:
             self.log.error(' %s ShowAllOdds fail '%self.login_site ) 
 
@@ -136,6 +151,7 @@ class Site_Api(Env):
             request_time= api.request_time ) 
 
             self.response_dict['GetMarket'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'GetMarket' , request_time = api.request_time )
         except:
 
             self.log.error(' %s GetMarket fail '%self.login_site ) 
@@ -160,6 +176,8 @@ class Site_Api(Env):
                 request_time= api.req_list[0] ) 
                 
                 self.response_dict['GetTickets'] = response_data
+
+                self.retrun_2d_list(site_name = site , api_name = 'GetTickets' , request_time = api.req_list[0])
                 
                 if result['TransId_Cash'] == '0' or result['TransId_Cash'] is None:
                     processbet_re =  result['Message']
@@ -170,6 +188,7 @@ class Site_Api(Env):
                 request_time= api.req_list[1] ) 
 
                 self.response_dict['ProcessBet'] = response_data
+                self.retrun_2d_list(site_name = site , api_name = 'ProcessBet' , request_time = api.req_list[1] )
             
         except:
             self.log.error(' %s ProcessBet fail '%self.login_site ) 
@@ -190,6 +209,8 @@ class Site_Api(Env):
     status  0:  All Pass , 1: Api Fail (接口登入錯誤) , 2: ProcessBet msg 投注沒成功 
     '''
     def Api_Status(self,site):# 針對 各監site 回傳 status 邏輯
+        
+
         if self.response_dict['Login']['response'] != 'OK':#  Api Fail (接口登入錯誤)
             self.response_dict['Status'] = '1'
             self.lets_talk[site] = 'Error'
@@ -201,9 +222,19 @@ class Site_Api(Env):
         
         return 'Done'
 
-
-
-
+    
+    # 用來排序 每個 api 此次執行的時間 快/慢
+    def sort_req_time(self):
+        #scores  = sorted(scores, key = lambda s: s[1])
+        print('開始排序 :')
+        for api_name in self.response_time_dict.keys():
+            sorted_list = sorted(self.response_time_dict[api_name], key = lambda s: s[1])
+            print('%s 接口: %s 執行最快 回應時間: %s , %s 執行最慢 : %s'%(api_name,
+            sorted_list[0][0],  sorted_list[0][1],          
+            sorted_list[-1][0],  sorted_list[-1][1],  )  )
+        print('排序完成')
+   
+            
 
 
 
@@ -222,6 +253,7 @@ for site in site_list:
     site_api_test.Api_Status(site)# 回傳 該site 的 staus邏輯
 
 
+
 #log.info('all site : %s'%site_api_test.site_dict)
 log.info('letstalk : %s'%site_api_test.lets_talk)
 
@@ -232,7 +264,11 @@ if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 e
 
 else:
     log.info('All Site Pass : %s'%site_list )
+    log.info('Response Time : %s'%site_api_test.response_time_dict )
+    site_api_test.sort_req_time()
+    
     Status = 1
+    
 node_type = Common().get_node_type()# 0 local , 1 remote
 
 

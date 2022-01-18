@@ -58,12 +58,14 @@ class Common:
             ,'Snooker/Pool': {'gameid': 7},'Baseball': {'gameid': 8},'Badminton': {'gameid': 9},'Golf': {'gameid': 10},'Motorsports': {'gameid': 11},'Swimming': {'gameid': 12},\
             'Politics': {'gameid': 13},'Water_Polo': {'gameid': 14},'Diving': {'gameid': 15},'Boxing/MMA': {'gameid': 16},'Archery': {'gameid': 17},'Table_Tennis': {'gameid': 18},\
             'Weightlifting': {'gameid':19},'Canoeing': {'gameid': 20},'Gymnastics': {'gameid': 21},'Athletics': {'gameid': 22},'Equestrian': {'gameid': 23},'Handball': {'gameid': 24},\
-            'Darts': {'gameid': 25},'Field_Hockey': {'gameid': 28},'Winter_Sports': {'gameid': 29},'Squash': {'gameid': 30},'Entertainment': {'gameid': 31},'Netball': {'gameid': 32},\
+            'Darts': {'gameid': 25},'Rugby': {'gameid': 26},'Field_Hockey': {'gameid': 28},'Winter_Sports': {'gameid': 29},'Squash': {'gameid': 30},'Entertainment': {'gameid': 31},'Netball': {'gameid': 32},\
             'Cycling': {'gameid': 33},'Fencing': {'gameid': 34},'Judo': {'gameid': 35},'M.Pentathlon': {'gameid': 36},'Rowing': {'gameid': 37},'Sailing': {'gameid': 38},\
             'Shooting': {'gameid': 39},'Taekwondo': {'gameid': 40},'Triathlon': {'gameid': 41},'Wrestling': {'gameid': 42},'E-Sports': {'gameid': 43},'Muay_Thai': {'gameid': 44},\
             'Beach_Volleyball': {'gameid': 45},'Unknown_sport(Thai_sport)': {'gameid':46},'Kabaddi': {'gameid': 47},'Sepak_Takraw': {'gameid': 48},'Futsal': {'gameid': 49},\
             'Cricket': {'gameid': 50},'Beach_Soccer': {'gameid': 51},'Poker': {'gameid': 52},'Chess': {'gameid': 53},'Olympics': {'gameid': 54},'Finance': {'gameid': 55},\
-            'Lotto': {'gameid': 56},'Other_Sports': {'gameid': 99}
+            'Lotto': {'gameid': 56},'Other_Sports': {'gameid': 99},'Soccer Euro Cup': {'gameid': 197},'Soccer Champions Cup': {'gameid': 196},'Soccer Asian Cup': {'gameid': 194},\
+            'Soccer League': {'gameid': 190},'Soccer World Cup': {'gameid': 192},'Soccer Nation': {'gameid': 191},'Virtual Soccer': {'gameid': 180},\
+            'Virtual Basketball': {'gameid': 193},'Virtual Tennis': {'gameid': 186},'Number Game': {'gameid': 161},'Turbo Number Game': {'gameid': 161},'Happy 5': {'gameid': 164}
             }
         return game_dict[sport]['gameid']
 

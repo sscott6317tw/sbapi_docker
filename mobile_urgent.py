@@ -8,6 +8,7 @@ from Common import Env,NoTestException
 import re
 import json,csv
 import datetime,time
+import sys
 
 AlreadyLogin = ""
 
@@ -21,7 +22,7 @@ from Logger import create_logger
 log = create_logger(r"\AutoTest", 'common')
 
 
-'''
+
 url = sys.argv[1]
 id=sys.argv[2]
 pw=sys.argv[3]
@@ -29,7 +30,7 @@ pw=sys.argv[3]
 url = 'http://smart.athena000.com/'
 id='autoqa03'
 pw='1q2w3e4r'
-
+'''
 def odds_check(odds,check_odds_type='MY'):
     if odds == "" or odds is None:
         return False

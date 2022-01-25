@@ -145,7 +145,7 @@ class Login(Common):#取得驗證碼邏輯
         return sr
 
     def get_Pwekey(self):# 取得 pwekey 街口 ,mobile使用
-        r = self.session.post(self.url  + '/Default/RefreshPKey',headers=self.headers)
+        r = self.session.post(self.url  + '/Default/RefreshPKey',headers=self.headers,verify=False)
         try:
             PWKEY = r.json()['Data']['PWKEY']
             logger.info('PKey: %s'%PWKEY) 
@@ -191,12 +191,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         start = time.perf_counter()
         #print(self.headers)
     
-        r = self.client_session.post(self.url  + func_url, data = request_data,headers=self.headers)
+        r = self.client_session.post(self.url  + func_url, data = request_data, headers=self.headers)
         #self.url = r.url
         self.stress_dict['request url'].append(self.req_url )
 
         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
-        logger.info("Request completed in %s s"%self.request_time )
+        logger.info("%s Request completed in %s s"%(func_url ,self.request_time ))
         self.stress_dict['request time'].append(self.request_time)
 
         return r
@@ -273,7 +273,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['Content-Type'] =  'application/x-www-form-urlencoded; charset=UTF-8'
             #logger.info('headers: %s'%self.headers)
             
-            r = self.client_session.post(self.url  + '/Login/index',data=login_data,headers=self.headers)
+            r = self.client_session.post(self.url  + '/Login/index',data=login_data,headers=self.headers,verify=False)
             try:
                 repspone_json = r.json()
                 #logger.info('response: %s'%repspone_json)
@@ -340,11 +340,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             
             try:# 這邊 try login 如果遇到 503 或者別問題
                 r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
+            
             except Exception as e:
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
 
-
+            #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            
 
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
             logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url

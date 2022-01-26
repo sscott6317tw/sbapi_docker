@@ -200,7 +200,7 @@ class mobile_urgent_controller:
     def test_betting(self,market,bettype_class='OU',bettype_id='',no_bettype=''): #no_bettype 用來判斷是否有不要重複下注的 Bettype ID
         self.mobile_api.set_odds_type(odds_type='MY')
         self.log.info("開始下注 %s %s 下注"%(self.sport,market))
-        showallodds_result = self.mobile_api.ShowAllOdds(type='',market=[str(market[0]).lower()],sport=self.sport,bet_type=bettype_class)
+        showallodds_result = self.mobile_api.ShowAllOdds(type='test',market=[str(market[0]).lower()],sport=self.sport,bet_type=bettype_class)
         if showallodds_result == True or showallodds_result == 'False':
             pass
         else:
@@ -422,7 +422,7 @@ class mobile_urgent_controller:
                                         bets_dict[self.sport].append('%s %s'%(bet_result,market))
                                         break
                                     else:
-                                        if any(fail_info in str(bet_result) for fail_info in  ['closed','HDP/OU','updating odds','Odds has changed','Live score'] ) and retry < 5 and self.sport not in ['Turbo Number Game','Number Game']:
+                                        if any(fail_info in str(bet_result) for fail_info in  ['closed','HDP/OU','updating odds','Odds has changed','Live score'] ) and retry < 5 and self.sport not in ['Turbo Number Game','Number Game','Baseball']:
                                             if retry == 3:
                                                 no_bettype = str(re.findall(r"'BetTypeId': (.+), 'BetChoice",bet_result)[0])
                                             self.log.error('Odds Closed Retry Betting')
@@ -785,7 +785,7 @@ class TestRegression:
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Tennis')
         mobile_api_betting_test.process_betting()
-    
+
     def test_baseball_betting(self):
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Baseball')

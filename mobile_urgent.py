@@ -200,7 +200,7 @@ class mobile_urgent_controller:
     def test_betting(self,market,bettype_class='OU',bettype_id='',no_bettype=''): #no_bettype 用來判斷是否有不要重複下注的 Bettype ID
         self.mobile_api.set_odds_type(odds_type='MY')
         self.log.info("開始下注 %s %s 下注"%(self.sport,market))
-        showallodds_result = self.mobile_api.ShowAllOdds(type='test',market=[str(market[0]).lower()],sport=self.sport,bet_type=bettype_class)
+        showallodds_result = self.mobile_api.ShowAllOdds(type='',market=[str(market[0]).lower()],sport=self.sport,bet_type=bettype_class)
         if showallodds_result == True or showallodds_result == 'False':
             pass
         else:

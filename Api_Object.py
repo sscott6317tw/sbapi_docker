@@ -580,8 +580,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         League_name = LeagueN[str(LeagueId)]
                     
                         if type == '':# 不能有test 的賽事 
-                            if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ) and 'Test Match' not in League_name:# 如果 不是要 針對test 然後 testing 又再 league ,不能串
-                                continue
+                            if len(NewMatch) == 1 : #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改，或是 LeaguID 只有一個的話
+                                pass
+                            else:
+                                if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ) and 'Test Match' not in League_name:# 如果 不是要 針對test 然後 testing 又再 league ,不能串
+                                    continue
                         # type 帶 test 就 可以 忽略 testing 比賽 
                         team_name['Team1'] = TeamN[ str(TeamId1) ]
                         team_name['Team2'] = TeamN[str(TeamId2) ]
@@ -622,8 +625,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['response'].append('len MatchId: %s'%len_matchid )
 
         if len_matchid < 3:
-            logger.info('長度小於3 無法串票')
-            return 'False'
+            if len_matchid == 0:
+                return "No Market"
+            else:
+                logger.info('長度小於3 無法串票')
+                return 'False'
         else:
             return True
 

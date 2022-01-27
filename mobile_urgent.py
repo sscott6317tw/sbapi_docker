@@ -300,7 +300,7 @@ class mobile_urgent_controller:
             elif "api fail" in result_info.lower():
                 with allure.step("%s %s %s" %(self.sport,result_info.split(' API Fail')[1],result_info)):
                     assert False
-            elif self.sport in ['Number Game','Turbo Number Game','Happy 5'] and ("TransId_Cash': '0'" in result_info or "'TransId_Cash': None" in result_info or "TransId" not in result_info):
+            elif self.sport not in ['Soccer','Basketball','Tennis','Baseball','Cricket','Volleyball','E-Sports'] and ("TransId_Cash': '0'" in result_info or "'TransId_Cash': None" in result_info or "TransId" not in result_info):
                 try:
                     BetTypeId = str(re.findall(r"'BetTypeId': (.+), 'BetChoice",result_info)[0])
                     with open('bettype_id.csv', newline='') as csvfile: #抓取 Site 於什麼 Server Group
@@ -776,7 +776,7 @@ class TestRegression:
         bettype_id_list = [1,3] #如果是 Soccer,Basketball,E-Sports 3 個運動就值接指定 HDP，OU
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Soccer')
         mobile_api_betting_test.process_betting(bettype_id_list = bettype_id_list)
-    
+
     def test_basketball_betting(self):
         allure.dynamic.story("Betting 測試")
         bettype_id_list = [1,3]

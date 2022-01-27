@@ -775,7 +775,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 return False
         if bettype_id != '' and len(self.Match_dict) == 0:
             return "No BetType ID"
-        elif len(self.Match_dict) == 0 and self.bet_type == 'more': #用來判斷 No More Bettype
+        elif len(self.Match_dict) == 0 and 'more' in self.bet_type: #用來判斷 No More Bettype
             return "No More BetType"
         logger.info('self.Match_dict 0 : %s'%len(self.Match_dict[0] ))
         if int(parlay_len) ==3:

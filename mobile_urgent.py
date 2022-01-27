@@ -588,6 +588,8 @@ class mobile_urgent_controller:
                     market_list = ['Early','Early','Early']
                 retry = 0
                 while retry < 10:
+                    if retry > 5: #代表嘗試了五次還是失敗，把所有改成 Early
+                        market_list = ['Early','Early','Early']
                     get_market_count = 0
                     do_sports_list = []
                     for sport in sport_list :
@@ -610,7 +612,7 @@ class mobile_urgent_controller:
                                 continue
                         get_market_result = self.mobile_api.GetMarket(urgent_use=True)
                         if "No " in str(get_market_result) :
-                            return get_market_result
+                            continue
                         elif get_market_result == False :
                             self.log.info("打 GetMarket API Fail 發生錯誤")
                             return "GetMarket API Fail"
@@ -758,7 +760,7 @@ class TestRegression:
         bettype_id_list = [85,90] 
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Number Game')
         mobile_api_betting_test.process_betting(bettype_id_list = bettype_id_list)
-
+    
     def test_soccer_parlay_betting(self):
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='soccer parlay')
@@ -768,7 +770,7 @@ class TestRegression:
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='soccer parlay')
         mobile_api_betting_test.process_betting(single_sport_parlay=False)
-    
+
     def test_soccer_betting(self):
         allure.dynamic.story("Betting 測試")
         bettype_id_list = [1,3] #如果是 Soccer,Basketball,E-Sports 3 個運動就值接指定 HDP，OU
@@ -790,7 +792,7 @@ class TestRegression:
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Baseball')
         mobile_api_betting_test.process_betting()
-
+    
     def test_cricket_betting(self):
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Cricket')

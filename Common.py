@@ -54,7 +54,7 @@ class Common:
         print('time cost',self.time_end -self.time_start,'s')
 
     def game_mapping(self, sport):# 丟sport 參數, 回傳 gameid . 給 ShowAllOdds 街口使用
-        game_dict = {'Soccer': {'gameid': 1},'Basketball': {'gameid': 2},'Football': {'gameid': 3},'Ice_Hockey': {'gameid': 4},'Tennis': {'gameid': 5},'Volleyball': {'gameid': 6}\
+        game_dict = {'Soccer': {'gameid': 1},'Saba_Soccer': {'gameid': 997},'Basketball': {'gameid': 2},'Football': {'gameid': 3},'Ice_Hockey': {'gameid': 4},'Tennis': {'gameid': 5},'Volleyball': {'gameid': 6}\
             ,'Snooker/Pool': {'gameid': 7},'Baseball': {'gameid': 8},'Badminton': {'gameid': 9},'Golf': {'gameid': 10},'Motorsports': {'gameid': 11},'Swimming': {'gameid': 12},\
             'Politics': {'gameid': 13},'Water_Polo': {'gameid': 14},'Diving': {'gameid': 15},'Boxing/MMA': {'gameid': 16},'Archery': {'gameid': 17},'Table_Tennis': {'gameid': 18},\
             'Weightlifting': {'gameid':19},'Canoeing': {'gameid': 20},'Gymnastics': {'gameid': 21},'Athletics': {'gameid': 22},'Equestrian': {'gameid': 23},'Handball': {'gameid': 24},\

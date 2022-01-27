@@ -29,11 +29,12 @@ class Login(Common):#取得驗證碼邏輯
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
     
     
-    def login_api(self, device,user,password =  '1q2w3e4r',url='',client='',central_account='',central_password='',site=''):
+    def login_api(self, device,user,password =  '1q2w3e4r',url='',client='',central_account='',central_password='',
+            site='', queue= ''):
         '''devive 為Pc 才會去叫 webdriver ,要取驗證碼'''
         if device in ['mobile','app']:
             mobile_api = Mobile_Api(device='app',  password=password, url=url ,client = client,
-            sec_times=self.sec_times, stop_times=self.stop_times,site=site )
+            sec_times=self.sec_times, stop_times=self.stop_times,site=site, queue= queue )
 
             login_rseult = mobile_api.mobile_login(user=user,central_account=central_account,
             central_password=central_password)# 初始 login為 None 一定先登入
@@ -157,7 +158,7 @@ class Login(Common):#取得驗證碼邏輯
 
 #login_type 預設空字串, 是使用 athena 登入 
 class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
-    def __init__(self,client,device="",url='',user='',password='',sec_times='',stop_times='',site=''):
+    def __init__(self,client,device="",url='',user='',password='',sec_times='',stop_times='',site='', queue= ''):
         super().__init__(device,sec_times,stop_times) 
         self.login_session = {}# key 為 user ,value 放 NET_SessionId
         self.url = url
@@ -178,6 +179,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.odds_type = 'Dec' #先預設為空，避免沒有執行 Odds type Change 就下注
         self.site = site
         self.error_msg = ''# 用來判斷 成功訊息 (AllSite.py)
+        self.queue = queue
         
 
 
@@ -222,6 +224,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request time'].append(self.request_time)
 
         return r
+
+    def queue_object(self):# stress api 有用到的 街口  都要用 self.queue
+        if self.queue == '':
+            pass
+        else:
+            self.queue.put(self.stress_dict)
+        return ''
 
         
     def Return_Bet_dict(self,assign_betype):
@@ -317,7 +326,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             try:
                 r = self.client_session.get(self.url)
                 session_url = r.url # api site 需先拿到 session url 在做登入
-                logger.info('登入前 session url: %s'%session_url)
+                #logger.info('登入前 session url: %s'%session_url)
             except Exception as e:
                 logger.error(' url 請求 有誤 : %s'%e)
                 self.error_msg = 'login get error : %s'%e
@@ -452,7 +461,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         
 
 
-    def balance(self):# /balance/GetAccountInfo
+    def balance(self):# /balance/GetAccountInfo # showallodds url
         
         data = 'localtime=8'
         #self.headers['Referer'] = self.url
@@ -469,8 +478,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             BCredit = repspone_json['Data']['BCredit']
             self.error_msg = 'Bal: %s , BCredit: %s '%(Bal ,BCredit ) 
             self.stress_dict['response'].append(self.error_msg  )
+            self.OddsServerUrl = repspone_json['Data']['OddsServerUrl']# 如果為none 代表是走web
             
-            logger.info(self.error_msg )
+            logger.info('self.OddsServerUrl: %s'%self.OddsServerUrl)
             return True
         except:
             self.error_msg = r.text
@@ -540,7 +550,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         
                         self.headers['Authorization'] = 'Bearer  %s'%Bearer_data
                     
-                    self.req_url = 'http://oplg1.fast4indo.com/' + '/Odds/ShowAllOddsApi?'+data
+                    if self.OddsServerUrl is None:# 如果直接打show 
+                        self.balance()
+                    self.req_url = 'http://%s/'%self.OddsServerUrl + '/Odds/ShowAllOddsApi?'+data
                     
                     start = time.perf_counter()# 計算請求時間用
                     r = self.client_session.get(self.req_url  ,headers=self.headers)

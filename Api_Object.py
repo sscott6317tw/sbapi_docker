@@ -11,7 +11,7 @@ from  Logger import create_logger
 import pathlib
 from Common import Common
 import csv,re
-import urllib3
+import urllib3 , json
 from urllib.parse import urlparse
 urllib3.disable_warnings()
 
@@ -376,10 +376,45 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                self.api_site = 'odds provider' 
             return True
 
-    def get_contirbutetor(self ):# /main/GetContributor
+    def GetReferenceData(self):#GetReferenceData/GetBettypeName?lang=en-US 
+
+        r = self.stress_request_get( func_url = 'GetReferenceData/GetBettypeName?lang=en-US ')
+        try:
+            repspone_json = r.json()
+            len_response = len(repspone_json)
+            msg = 'response len : %s'%len_response
+            self.stress_dict['response'].append('msg: %s'%msg)
+
+            logger.info('msg: %s '%(msg ) )
+            return True
+        except:
+            logger.error('response :%s'%r.text )
+            self.stress_dict['response'].append(r.text) 
+            logger.error('GetReferenceData Api Fail')
+            return False
+
+
+    def JSResourceApi(self): # /JSResourceApi/GetJSResource
+        self.req_url = '/JSResourceApi/GetJSResource'
+        r = self.stress_request_get( func_url = self.req_url )
+        try:
+            repspone_json = r.json()
+            ErrorCode = repspone_json['ErrorCode']
+            self.error_msg =  ErrorCode
+            self.stress_dict['response'].append('ErrorCode: %s'%self.error_msg )
+
+            logger.info('ErrorCode: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('GetJSResource Api Fail')
+            return False
         
-        data = 'isParlay=false&both=true&defaulteuro=false'
-        r = self.stress_request_post(request_data= data, func_url = '/main/GetContributor' )
+    def GetStatusCount(self): #/MyBets/GetStatusCount
+        data = 'currWC=0'
+        r = self.stress_request_post(request_data= data, func_url = '/MyBets/GetStatusCount' )
         try:
             repspone_json = r.json()
             ErrorCode = repspone_json['ErrorCode']
@@ -390,6 +425,49 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         except:
             logger.error('response :%s'%r.text )
             self.stress_dict['response'].append(r.text) 
+            logger.error('MyBets/GetStatusCount Api Fail')
+            return False
+    
+    def Running_GetEarly(self): #Running/GetEarly
+
+        now = int(time.time()*1000)
+        self.req_url = '/Running/GetEarly_ch?datatype=0&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            stake_count = repspone_json['StakeCount']
+            ticket_count = repspone_json['TicketCount'] 
+            self.error_msg  = 'stake_count : %s , ticket_count : %s'%(stake_count, ticket_count)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Running_GetEarly Api Fail')
+            return False
+
+    
+    def get_contirbutetor(self ):# /main/GetContributor
+        
+        self.req_url = '/JSResourceApi/GetJSResource'
+        data = 'isParlay=false&both=true&defaulteuro=false'
+        r = self.stress_request_post(request_data= data, func_url = self.req_url )
+        try:
+            repspone_json = r.json()
+            ErrorCode = repspone_json['ErrorCode']
+            self.error_msg =  ErrorCode
+            self.stress_dict['response'].append('ErrorCode: %s'%self.error_msg)
+
+            logger.info('ErrorCode: %s '%(self.error_msg ) )
+            return True
+        except:
+            self.error_msg = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg) 
             logger.error('get_contirbutetor Api Fail')
             return False
 
@@ -519,7 +597,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     '''
     type 帶 test 就 可以 忽略 testing 比賽  ,bet_type 可帶 其他(ex: parlay)
     '''
-    def ShowAllOdds(self,type='',market=['e'],filter='',sport='Soccer',bet_type='OU'):# 取得 MatchId 傳給 GetMarket , 還有取得 TeamN 回傳給 DoplaceBet  的 home/away
+    def ShowAllOdds(self,type='',market=['e'],filter='',sport='Soccer',bet_type='OU',stress_type=''):# 取得 MatchId 傳給 GetMarket , 還有取得 TeamN 回傳給 DoplaceBet  的 home/away
         self.MatchId = {} #先清空
         
         # e為 早盤, t為 today
@@ -542,12 +620,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             
             try:# athen 和部分api的 ,走 一個邏輯
-                if self.login_type  == 'athena' or self.api_site =='web':# athena   
+                if self.login_type  == 'athena' or self.api_site =='web' or stress_type == 'stress':# athena   
                     self.req_url = '/Odds/ShowAllOdds'
                     r = self.stress_request_post(request_data= data, func_url = self.req_url )
 
                     #r = self.client_session.post(self.url  + '/Odds/ShowAllOdds',data=data,headers=self.headers)
                     repspone_json = r.json()
+                    self.odds_provider = ''
                 else:
                     if 'Authorization' not in list(self.headers.keys()):
                         logger.info('使用api site ,需先打 /Login/ExtendToken 拿出 Bearer')
@@ -557,10 +636,17 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         
                         self.headers['Authorization'] = 'Bearer  %s'%Bearer_data
                     
-                    if self.OddsServerUrl is None:# 如果直接打show 
-                        self.balance()
-                    self.req_url = 'http://%s/'%self.OddsServerUrl + '/Odds/ShowAllOddsApi?'+data
+                    try:
+                        
+                        self.req_url = 'https://%s/'%self.OddsServerUrl + '/Odds/ShowAllOddsApi?'+data
                     
+                    except:
+                        logger.info('需先打balance 拿取 server url')
+                        self.balance()
+                        self.req_url = 'https://%s/'%self.OddsServerUrl + '/Odds/ShowAllOddsApi?'+data
+                    
+                    self.odds_provider = 'true'
+
                     start = time.perf_counter()# 計算請求時間用
                     r = self.client_session.get(self.req_url  ,headers=self.headers,verify=False)
                     self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
@@ -568,7 +654,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                     repspone_json = r.json()
                 #logger.info('repspone_json: %s'%repspone_json)   
-            except:
+            except Exception as e:
+                logger.error('error : %s'%e)
                 self.error_msg = r.text
                 logger.info('mobile ShowAllOdds Api Fail : %s'%self.error_msg)
                 
@@ -646,6 +733,87 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             return True
 
 
+
+    '''
+    這邊為 product 上 呼叫 get market 方式 , getmarkets/ getmarketsapi 
+    data 為一個 list 裡包 多個  matichid , 並送出一個請求
+    '''
+    def New_GetMarkets(self):
+        self.Match_dict = {}
+
+        market_data_list = []#存放  字典的list
+        for index,match_id in enumerate(self.MatchId.keys()):
+            self.MarketId = {}
+            market = self.MatchId[match_id]['Market']
+            #logger.info('match_id : %s, 資訊: %s'%(match_id, self.MatchId[match_id]))
+            if self.gameid == 999:
+                data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":self.gametype}
+            else:
+                if self.gameid == 50 and "more" in self.bet_type: #當 Sports 為 Cricket，Gametype 為 1
+                    data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":1}
+                else:
+                    data = {"GameId": self.gameid ,"DateType":market,"BetTypeClass":self.bet_type,"Matchid":match_id,"Gametype":0}
+            
+            market_data_list.append(data)
+            if index == 4:# 固定抓出 前面 5個 matchid
+                break
+
+        try:
+
+            logger.info('market_data_list : %s'%market_data_list ) 
+            start = time.perf_counter()# 計算請求時間用
+            
+            self.headers['Content-Type'] =  'application/json;charset-UTF-8'
+            if self.odds_provider == '':# web
+                self.req_url = self.url  + '/Odds/GetMarkets'
+            else:# odds provider
+                self.req_url = 'https://%s'%self.OddsServerUrl + '/Odds/GetMarketsApi'
+
+            logger.info('get market url: %s'%self.req_url)
+
+            r = self.client_session.post(self.req_url , data = json.dumps(market_data_list) ,headers= self.headers 
+            ,verify=False  )
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+
+            repspone_json = r.json()
+            #logger.info('repspone_json: %s'%repspone_json) 
+        except Exception as e:
+            logger.error('mobile GetMarkets error: %s'%e)
+            self.error_msg = r.text 
+            logger.error('mobile GetMarkets Api Fail : %s'%self.error_msg)
+            return False
+
+        MatchId_value = self.MatchId[match_id]
+        logger.info('MatchId_value: %s'%MatchId_value)
+        match_key = list(repspone_json['Data'].keys())[0]
+        NewOdds = repspone_json['Data'][match_key]['NewOdds']
+        
+        for index, dict_ in enumerate(NewOdds):
+            new_dict = {}
+            MarketId = dict_['MarketId']
+            new_dict['MatchId'] = dict_['MatchId']
+            new_dict['BetTypeId'] = dict_['BetTypeId']
+            new_dict['Line'] = dict_['Line']
+            new_dict['Pty'] = dict_['Pty']
+            Selecetion_key =  list(dict_['Selections'].keys())# 為一個betype 下面 所有的bet choice
+
+            for bet_choice_index, bet_choice in enumerate(Selecetion_key): 
+                odds = dict_['Selections'][bet_choice]['Price']
+                new_dict['bet_team_%s'%bet_choice_index] = bet_choice
+                new_dict['odds_%s'%bet_choice_index] = odds
+
+
+            new_value = MatchId_value.copy()# 原本
+            new_value.update(new_dict)# 新的放進來
+            self.MarketId[MarketId] = new_value
+
+
+        Market_value = self.MarketId
+        self.Match_dict[0] = Market_value
+
+
+
+
     '''
     parlay_len 預設 給3 是 找三個match 來串即可, 如果不是 3 就是 給其他長度
     BetType 預設為 parlay . parlaymore 為更多 bet
@@ -667,14 +835,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         for key in dict_key_is:
             new_dic[key] = self.MatchId.get(key)
         self.MatchId = new_dic
-        '''
-        elif 'parlay' in self.bet_type: #反轉列表的用意在於，懷疑越後面的月部會 Odds Change
-            dict_key_is = list(reversed(self.MatchId.keys()))
-            new_dic = {}
-            for key in dict_key_is:
-                new_dic[key] = self.MatchId.get(key)
-            self.MatchId = new_dic
-        '''
+
         for index,match_id in enumerate(self.MatchId.keys()):
             #print(match_id)
             self.MarketId = {}
@@ -964,7 +1125,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.Odds_dict = {}# key 為 match id ,value 為 odds
         Parlay_dict = {'1' : '1', '2': '4', '3': '7' }# value 是拿來 給 parlay data 的  BetCount 和 TotalStake
         
-        if new_match_key_dict != '':
+        if new_match_key_dict != '':# cross market
             self.Match_dict = new_match_key_dict
 
         len_Match_dic= len(self.Match_dict)
@@ -1239,12 +1400,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                     else:# single
 
-                        combo_str = "&ItemList[0][Minbet]=1"
+                        combo_str = "ItemList[0][Minbet]=1"
 
                         data_str = data_str + combo_str
                         
-                        
+                        #logger.info('ticket data: %s'%data_str)
                         start = time.perf_counter()# 計算請求時間用
+                        self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
                         r = self.client_session.post(self.url  + '/BetV2/GetTickets'  , data = data_str.encode(),
                                 headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
 
@@ -1254,10 +1416,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
 
                         try:
-                            logger.info('GetTickets OK')
+                            
                             self.ticket_Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict
                             #logger.info('ticket: %s'%Data)
-
+                            logger.info('GetTickets OK')
                             self.min_stake = self.ticket_Data['Minbet']
                             self.guid = self.ticket_Data['Guid']
                             self.Line = self.ticket_Data['Line']

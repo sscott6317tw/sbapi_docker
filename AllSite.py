@@ -19,15 +19,13 @@ class Site_Api(Env):
 
         # key 為 api , value 為一個 二為陣列
         self.response_time_dict = { 'Login':[], 'UserProfile': [] ,
-        'Balance': [] , 'ShowAllOdds': [], 'GetTickets': [] , 'GetMarket': [] , 'ProcessBet':[] }
+        'Balance': [] , 'ShowAllOdds': [], 'GetTickets': [] , 'GetMarket': [] , 'ProcessBet':[], 
+        'JSResourceApi' : []   , 'get_contirbutetor': [] , 'Running_GetEarly': []
+             }
  
     
         self.log = log
 
-        '''
-        case_list 不加入login, 這個是用來 如果 login 失敗後, 不做後面的case, 但要增加到資料結構使用
-        '''
-        self.case_list = [ 'UserProfile' ,'Balance' , 'ShowAllOdds', 'GetTickets' , 'GetMarket' , 'ProcessBet' ]
         #print( self.url_dict)
 
     def retrun_2d_list(self ,site_name,  api_name , request_time): #回傳每次執行api 的 一個二為陣列 ,用來統計用
@@ -41,7 +39,7 @@ class Site_Api(Env):
         
         # 登入
         try:
-            if site in ['Xtu168','Senibet', 'Yibo', 'Alog', 'Fun88', '11Bet']:
+            if site in ['Xtu168','Senibet', 'Yibo', 'Alog', 'Fun88', '11Bet','Bbin']:
                 login_user = 'qatest03'
             else:
                 login_user = 'twqa09'
@@ -76,7 +74,7 @@ class Site_Api(Env):
             '''
             這邊用意是把 剩下的 case 加到資料結構
             '''
-            for case in self.case_list:
+            for case in  self.response_time_dict:
                 self.response_dict[case] = self.return_data()
             
             return False
@@ -121,7 +119,66 @@ class Site_Api(Env):
 
             self.response_dict['Balance'] = response_data
 
+        # JSResourceApi
+        try:
+        
+            api.JSResourceApi()
 
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['JSResourceApi'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'JSResourceApi' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s JSResourceApi fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+
+            self.response_dict['JSResourceApi'] = response_data
+
+
+        # Running_GetEarly
+        try:
+        
+            api.Running_GetEarly()
+
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['Running_GetEarly'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'Running_GetEarly' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s Running_GetEarly fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+
+            self.response_dict['Running_GetEarly'] = response_data
+
+        # get_contirbutetor
+        try:
+        
+            api.get_contirbutetor()
+
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['get_contirbutetor'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'get_contirbutetor' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s get_contirbutetor fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+
+            self.response_dict['get_contirbutetor'] = response_data
         
         
         try:
@@ -146,7 +203,7 @@ class Site_Api(Env):
 
         
         try:
-            api.GetMarket()
+            api.New_GetMarkets()
             response_data = self.return_data(url =  api.req_url , response = 'OK' , 
             request_time= api.request_time ) 
 
@@ -217,6 +274,7 @@ class Site_Api(Env):
 
         elif self.site_dict[site]['ProcessBet']['response'].isdigit() is False: # process bet 回傳的 string 不是 訂單 (全為數字)
             self.response_dict['Status'] = '2'
+            self.lets_talk[site] = 'Error'
         else:# 登入 成功, process bet 也有訂單號回傳
             self.response_dict['Status'] = '0'
         
@@ -238,10 +296,9 @@ class Site_Api(Env):
 
 
 
-
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Xtu168']
+#site_list = ['Fun88']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 

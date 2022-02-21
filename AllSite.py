@@ -20,7 +20,7 @@ class Site_Api(Env):
         # key 為 api , value 為一個 二為陣列
         self.response_time_dict = { 'Login':[], 'UserProfile': [] ,
         'Balance': [] , 'ShowAllOdds': [], 'GetTickets': [] , 'GetMarket': [] , 'ProcessBet':[], 
-        'JSResourceApi' : []   , 'get_contirbutetor': [] , 'Running_GetEarly': []
+        'JSResourceApi' : []   , 'GetContirbutetor': [] , 'Running_GetEarly': []
              }
  
     
@@ -168,17 +168,17 @@ class Site_Api(Env):
             response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
             request_time= api.request_time ) 
 
-            self.response_dict['get_contirbutetor'] = response_data
-            self.retrun_2d_list(site_name = site , api_name = 'get_contirbutetor' , 
+            self.response_dict['GetContirbutetor'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'GetContirbutetor' , 
                 request_time = api.request_time )
 
 
         except Exception as e:
-            self.log.error(' %s get_contirbutetor fail : %s '%(self.login_site ,e )) 
+            self.log.error(' %s GetContirbutetor fail : %s '%(self.login_site ,e )) 
             
             response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
 
-            self.response_dict['get_contirbutetor'] = response_data
+            self.response_dict['GetContirbutetor'] = response_data
         
         
         try:

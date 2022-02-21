@@ -221,7 +221,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.stress_dict['request url'].append(self.req_url)
 
         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
-        logger.info("Request completed in %s s"%self.request_time )
+        logger.info("%s Request completed in %s s"%(func_url, self.request_time ))
         self.stress_dict['request time'].append(self.request_time)
 
         return r
@@ -453,7 +453,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     
     def get_contirbutetor(self ):# /main/GetContributor
         
-        self.req_url = '/JSResourceApi/GetJSResource'
+        self.req_url = '/main/GetContributor'
         data = 'isParlay=false&both=true&defaulteuro=false'
         r = self.stress_request_post(request_data= data, func_url = self.req_url )
         try:

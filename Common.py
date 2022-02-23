@@ -128,10 +128,10 @@ class Common:
 class Env:
     def __init__(self):
         self.api_url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
-        'Bbin': 'http://ismart.playbooksb.com/apilogin', '12Bet': 'http://ismart.wew77.com/apilogin',
+        'Bbin': 'http://o8x6ma.pg5688.com/apilogin', '12Bet': 'http://ismart.wew77.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
-        'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.fx9888.com/apilogin',
-        'Fun88' : 'http://ismart.fun88.com/apilogin', 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
+        'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'https://m2s8ma.gi6688.com/apilogin',
+        'Fun88' : 'https://ismart.fahuathuat.com/apilogin', 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
         'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 'Tlc': 'http://ismart.1731788.com/apilogin' ,
         
           },

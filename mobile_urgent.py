@@ -1,3 +1,4 @@
+from codecs import BufferedIncrementalDecoder
 import time,coloredlogs
 import Api_Object
 from  Logger import create_logger 
@@ -20,7 +21,7 @@ from Logger import create_logger
 log = create_logger(r"\AutoTest", 'common')
 
 
-
+'''
 url = sys.argv[1]
 id=sys.argv[2]
 pw=sys.argv[3]
@@ -28,7 +29,7 @@ pw=sys.argv[3]
 url = 'http://smart.athena000.com/'
 id='autoqa03'
 pw='1q2w3e4r'
-'''
+
 def odds_check(odds,check_odds_type='MY'):
     if odds == "" or odds is None:
         return False
@@ -363,7 +364,14 @@ class mobile_urgent_controller:
         if single_sport_parlay == '':
             if self.sport == "Virtual Sports":
                 #['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Soccer','Virtual Basketball','Virtual Tennis']
-                sports_list = ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Soccer','Virtual Basketball','Virtual Tennis']
+                betradar_vs_sports = ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball']
+                sports_list = []
+                import random
+                random.shuffle(betradar_vs_sports) 
+                for i in range(2):#隨機取兩個 betradar Sports
+                    sports_list.append(betradar_vs_sports[i])    
+                sports_list.append('Virtual Soccer')
+                sports_list.append('Virtual Tennis')
             elif self.sport == "Number Game": #['Turbo Number Game','Number Game']
                 sports_list = ['Turbo Number Game','Number Game']
             else:

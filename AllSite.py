@@ -203,6 +203,7 @@ class Site_Api(Env):
 
         
         try:
+  
             api.New_GetMarkets()
             response_data = self.return_data(url =  api.req_url , response = 'OK' , 
             request_time= api.request_time ) 
@@ -249,7 +250,7 @@ class Site_Api(Env):
             
         except:
             self.log.error(' %s ProcessBet fail '%self.login_site ) 
-
+            self.log.error('error_msg %s  '%api.error_msg  ) 
             response_data = self.return_data(url =  api.req_url[1] , response = api.error_msg  ) 
             self.response_dict['ProcessBet'] = response_data
         
@@ -267,18 +268,20 @@ class Site_Api(Env):
     '''
     def Api_Status(self,site):# 針對 各監site 回傳 status 邏輯
         
-
-        if self.response_dict['Login']['response'] != 'OK':#  Api Fail (接口登入錯誤)
-            self.response_dict['Status'] = '1'
+        try:
+            if self.response_dict['Login']['response'] != 'OK':#  Api Fail (接口登入錯誤)
+                self.response_dict['Status'] = '1'
+                self.lets_talk[site] = 'Error'
+            
+            elif self.site_dict[site]['ProcessBet']['response'].isdigit() is False: # process bet 回傳的 string 不是 訂單 (全為數字)
+                self.response_dict['Status'] = '2'
+                self.lets_talk[site] = 'Error'
+            else:# 登入 成功, process bet 也有訂單號回傳
+                self.response_dict['Status'] = '0'
+            
+            return 'Done'
+        except:
             self.lets_talk[site] = 'Error'
-
-        elif self.site_dict[site]['ProcessBet']['response'].isdigit() is False: # process bet 回傳的 string 不是 訂單 (全為數字)
-            self.response_dict['Status'] = '2'
-            self.lets_talk[site] = 'Error'
-        else:# 登入 成功, process bet 也有訂單號回傳
-            self.response_dict['Status'] = '0'
-        
-        return 'Done'
 
     
     # 用來排序 每個 api 此次執行的時間 快/慢

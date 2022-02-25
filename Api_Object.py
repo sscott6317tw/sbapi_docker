@@ -10,7 +10,7 @@ import pytesseract,os,time
 from  Logger import create_logger 
 import pathlib
 from Common import Common
-import csv,re
+import csv,re , requests
 import urllib3 , json
 from urllib.parse import urlparse
 urllib3.disable_warnings()
@@ -181,8 +181,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.site = site
         self.error_msg = ''# 用來判斷 成功訊息 (AllSite.py)
         self.queue = queue
-        
 
+        #key 分別是 site , session_url , session ,value 分別放 list 
+        self.stress_login_dict = defaultdict(list)#用來 存放 stress 壓測  login session 
+        self.site_stress = {}# key 為 site , value 為 self.stress_login_dict
 
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
@@ -259,7 +261,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     '''
     athena 需叫 本地js , api site 直接 在 url 後面增加query 參數
     '''
-    def mobile_login(self,user,central_account='',central_password=''):# Mobile Login街口邏輯
+    def mobile_login(self,user,central_account='',central_password='',site='',stress_url = ''):# Mobile Login街口邏輯
         
         self.user = user
         if self.login_type  == 'athena':# athena 登入
@@ -325,12 +327,20 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             '''
             start = time.perf_counter()# 計算請求時間用
             try:
+                if 'stress_site' in site:
+                    self.url = stress_url
+                    #logger.info('stress url : %s'%self.url)
+                    self.client_session = requests.Session()
+                    strss_site_session = self.client_session
+
                 r = self.client_session.get(self.url,verify=False)
                 session_url = r.url # api site 需先拿到 session url 在做登入
                 #logger.info('登入前 session url: %s'%session_url)
             except Exception as e:
                 logger.error(' url 請求 有誤 : %s'%e)
                 self.error_msg = 'login get error : %s'%e
+                self.stress_login_dict['error'].append('false')#失敗 存放
+
                 return self.error_msg
             
             
@@ -359,7 +369,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             
 
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
-            logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
+            #logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
             
 
             if 'Message' in self.url:
@@ -374,11 +384,25 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.api_site = 'web'
             else:
                self.api_site = 'odds provider' 
+            if site == 'stress_user' :# 壓測 才做這下面的 存放   壓測login user 方式
+                new_dict = {} 
+                new_dict['session'] =  self.client_session
+                new_dict['url'] =  self.url
+                self.site_stress[user] = new_dict
+            elif 'stress_site' in site:#壓測 login site 方式
+                site_name = site.split('stress_site_')[-1]
+                self.stress_login_dict['site_name'].append(site_name)
+                self.stress_login_dict['session'].append(strss_site_session)
+                self.stress_login_dict['url'].append(self.url)
+
+            else:
+                pass
+                
             return True
 
     def GetReferenceData(self):#GetReferenceData/GetBettypeName?lang=en-US 
 
-        r = self.stress_request_get( func_url = 'GetReferenceData/GetBettypeName?lang=en-US ')
+        r = self.stress_request_get( func_url = 'GetReferenceData/GetBettypeName?lang=en-US')
         try:
             repspone_json = r.json()
             len_response = len(repspone_json)
@@ -782,11 +806,18 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.error_msg = r.text 
             logger.error('mobile GetMarkets Api Fail : %s'%self.error_msg)
             return False
+        
+        import random #亂數排列字典，讓程式不要重複下到原本的 Match ID
+        match_id = list(self.MatchId.keys())
+        random.shuffle(match_id)
 
-        MatchId_value = self.MatchId[match_id]
-        logger.info('MatchId_value: %s'%MatchId_value)
-        match_key = list(repspone_json['Data'].keys())[0]
-        NewOdds = repspone_json['Data'][match_key]['NewOdds']
+        MatchId_value = self.MatchId[match_id[0]]
+        #logger.info('MatchId_value: %s'%MatchId_value)
+
+        match_key = list(repspone_json['Data'].keys())
+        ran_index = random.randint(0, len(match_key)-1 )
+
+        NewOdds = repspone_json['Data'][match_key[ran_index]]   ['NewOdds']
         
         for index, dict_ in enumerate(NewOdds):
             new_dict = {}
@@ -810,7 +841,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
         Market_value = self.MarketId
         self.Match_dict[0] = Market_value
-
+        #logger.info('self.Match_dict[0] : %s'%self.Match_dict[0])
 
 
 
@@ -955,6 +986,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('self.Match_dict 1 : %s'%len(self.Match_dict[1]))
             logger.info('self.Match_dict 2: %s'%len(self.Match_dict[2]))
         else:
+            #logger.info('self.Match_dict[0] : %s'%self.Match_dict[0])
             return self.Match_dict[0]
 
     def Betting_response(self,response,times,BetTypeId=''):# 針對 投注 回復 做解析
@@ -1045,8 +1077,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #self.order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
             #logger.info('self.post_data: %s'%self.post_data)
-            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
-                
+            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','maximum number of bets','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
+                self.error_msg = Itemdict['Message']
                 #logger.info('self.post_data: %s'%self.post_data)
                 return Itemdict['Message']
             else:
@@ -1315,6 +1347,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                             ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
                             Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,  bet_type = "OU")
+                            logger.info('data_format : %s'%data_format)
+                        
                         except Exception as e:
                             logger.error('data_format: %s'%e)
                 else:

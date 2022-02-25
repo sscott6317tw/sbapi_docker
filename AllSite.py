@@ -280,8 +280,13 @@ class Site_Api(Env):
                 self.response_dict['Status'] = '0'
             
             return 'Done'
-        except:
-            self.lets_talk[site] = 'Error'
+        except Exception as e:
+            self.log.error('Api_Status : %s'%e)
+            if 'isdigit' in str(e):# 這是 betting 問題
+                self.response_dict['Status'] = '2'
+                pass
+            else:
+                self.lets_talk[site] = 'Error'
 
     
     # 用來排序 每個 api 此次執行的時間 快/慢
@@ -339,5 +344,4 @@ try:
     log.info(' 此次 insert資料 OK' )
 except Exception as e:
     log.error('DB 建立有誤 : %s'%e )
-
 

@@ -1078,8 +1078,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('betting response message: %s'%Itemdict['Message'])
             #logger.info('self.post_data: %s'%self.post_data)
             if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','maximum number of bets','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
-                self.error_msg = Itemdict['Message']
-                #logger.info('self.post_data: %s'%self.post_data)
+                self.error_msg = Itemdict['ErrorCode']
+                logger.error('response : %s'%Itemdict['Message'] )
                 return Itemdict['Message']
             else:
                 pass
@@ -1347,7 +1347,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                             ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
                             Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,  bet_type = "OU")
-                            logger.info('data_format : %s'%data_format)
+                            #logger.info('data_format : %s'%data_format)
                         
                         except Exception as e:
                             logger.error('data_format: %s'%e)

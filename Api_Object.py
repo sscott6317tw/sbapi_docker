@@ -703,7 +703,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         League_name = LeagueN[str(LeagueId)]
                     
                         if type == '':# 不能有test 的賽事 
-                            if len(NewMatch) == 1 : #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改，或是 LeaguID 只有一個的話
+                            if (len(NewMatch) == 1 and bet_type == 'OU') or (len(NewMatch) == 1 and bet_type == 'more'): #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改，或是 LeaguID 只有一個的話
                                 pass
                             else:
                                 if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ) and 'Test Match' not in League_name:# 如果 不是要 針對test 然後 testing 又再 league ,不能串
@@ -1736,7 +1736,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     new_betteam = 'G7%2B/G7'
                                 data_format = "ItemList%5B0%5D%5Btype%5D={bet_type}&ItemList%5B0%5D%5Bbettype%5D={BetTypeId}&ItemList%5B0%5D%5Boddsid%5D={oddsid}&ItemList%5B0%5D%5Bodds%5D={odds}&ItemList%\
                                     5B0%5D%5BLine%5D={Line}&ItemList%5B0%5D%5BHscore%5D=0&ItemList%5B0%5D%5BAscore%5D=32&ItemList%5B0%5D%5BMatchid%5D={Matchid}&ItemList%5B0%5D%5Bbetteam%5D={betteam}%2B&\
-                                    ItemList%5B0%5D%5Bstake%5D={bet_stake}&ItemList%5B0%5D%5BQuickBet%5D=1%3A100%3A10%3A1&ItemList%5B0%5D%5BChoiceValue%5D=&ItemList%5B0%5D%5Bhome%5D={Team1}&\
+                                    ItemList%5B0%5D%5BQuickBet%5D=1%3A100%3A10%3A1&ItemList%5B0%5D%5BChoiceValue%5D=&ItemList%5B0%5D%5Bhome%5D={Team1}&\
                                     ItemList%5B0%5D%5Baway%5D={Team2}&ItemList%5B0%5D%5Bgameid%5D={gameid}&ItemList%5B0%5D%5BisMMR%5D=0&ItemList%5B0%5D%5BMRPercentage%5D=&ItemList%5B0%5D%5BGameName%5D=&\
                                     ItemList%5B0%5D%5BSportName%5D=Basketball&ItemList%5B0%5D%5BIsInPlay%5D=false&ItemList%5B0%5D%5BSrcOddsInfo%5D=&ItemList%5B0%5D%5Bpty%5D=1&\
                                     ItemList%5B0%5D%5BHdp1%5D={Line1}&ItemList%5B0%5D%5BHdp2%5D={Line2}&ItemList%5B0%5D%5BBonusID%5D=0&ItemList%5B0%5D%5BBonusType%5D=0&ItemList%5B0%5D%5Bsinfo%5D=F1B30X0000&\
@@ -1748,13 +1748,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                     self.betting_info['bet_team'] = self.betting_info['bet_team'].replace("1","")
                                 data_format = "ItemList[{index_key}][type]={bet_type}&ItemList[{index_key}][bettype]={BetTypeId}&ItemList[{index_key}][oddsid]={oddsid}&ItemList[{index_key}][odds]={odds}&\
                                 ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Ascore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
-                                ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
+                                ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
                                 ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
                                 ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][hdp1]={Line1}&\
                                 ItemList[{index_key}][hdp2]={Line2}&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                                 ".format(index_key= index_key, BetTypeId=self.betting_info['BetTypeId'], oddsid=self.betting_info['oddsid'] ,Matchid = self.betting_info['MatchId'] ,
                                 Team1 =self.betting_info['Team1'], Team2= self.betting_info['Team2'] ,odds=self.betting_info['odds'] ,gameid = self.gameid,betteam = self.betting_info['bet_team'],
-                                Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU", bet_stake = self.bet_stake )
+                                Line = self.betting_info['Line'],Line1 = self.betting_info['Line1'],Line2 = self.betting_info['Line2'], bet_type = "OU" )
                         except Exception as e:
                             logger.error('data_format: %s'%e)
 
@@ -1772,11 +1772,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
                                     headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                             try:
+                                repspone_json = r.json()
                                 if any(_bet_team in self.betting_info['bet_team'] for _bet_team in  ['aos','AOS']) or any(_BetTypeId in str(self.betting_info['BetTypeId']) for _BetTypeId in ['468','469']): #如果是 aos 就要抓取 SrcOddsInfo，並放到 postdata 裡面
-                                    repspone_json = r.json()
                                     SrcOddsInfo = repspone_json['Data'][0]['SrcOddsInfo']
                                     data_str = "ItemList[0][SrcOddsInfo]={SrcOddsInfo}&".format(SrcOddsInfo= SrcOddsInfo) + data_str
+                                self.bet_stake = repspone_json['Data'][0]['Minbet']
                                 logger.info('GetTickets OK')
+                                if "ItemList%5B" in data_str:
+                                    data_str = "ItemList%5B0%5D%5Bstake%5D={bet_stake}&".format(bet_stake = self.bet_stake) + data_str
+                                else:                                
+                                    data_str = "ItemList[0][stake]={bet_stake}&".format(bet_stake = self.bet_stake) + data_str
                             except Exception as e:
                                 logger.error('Single Bet Get Ticket 有誤 : '+str(e))
                                 return 'GetTickets False'

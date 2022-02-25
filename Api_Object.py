@@ -679,7 +679,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                         League_name = LeagueN[str(LeagueId)]
                     
                         if type == '':# 不能有test 的賽事 
-                            if len(NewMatch) == 1 : #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改，或是 LeaguID 只有一個的話
+                            if (len(NewMatch) == 1 and bet_type == 'OU') or (len(NewMatch) == 1 and bet_type == 'more'): #僅有 Test 的比賽，就不要移除 Test 的比賽，不寫再主判斷是為了到時候 Parlay 要修改，或是 LeaguID 只有一個的話
                                 pass
                             else:
                                 if any(test_parlay in League_name for test_parlay in  ['TESTING','test','Test','测试'] ) and 'Test Match' not in League_name:# 如果 不是要 針對test 然後 testing 又再 league ,不能串

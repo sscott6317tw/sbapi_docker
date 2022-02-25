@@ -1,5 +1,3 @@
-
-from sys import getfilesystemencoding
 import time,coloredlogs
 import Api_Object
 from  Logger import create_logger 
@@ -255,7 +253,7 @@ class mobile_urgent_controller:
                                 allure.attach("%s : %s"%(check_odds_type,odds),"Odds 確認錯誤不為 %s Odds Type"%check_odds_type)
                                 assert False
         else:
-            if " No " in result_info :
+            if " No " in result_info and " No Bet " not in result_info:
                 if "No BetType ID" in result_info:
                     BetTypeId = result_info.split(' No BetType ID')[1]
                     with open('bettype_id.csv', newline='') as csvfile: #抓取 Site 於什麼 Server Group
@@ -531,10 +529,15 @@ class mobile_urgent_controller:
                         else:
                             betting_result = False
                             self.log.error(str(e))
+                            self.log.error(str(bets_info))
                         continue            
                 else:
                     try:
-                        self.report_generate(betslip)
+                        if betslip == False:
+                            with allure.step("下注失敗，確認 Log 下注錯誤資訊 "):
+                                betting_result = False
+                        else:
+                            self.report_generate(betslip)
                     except Exception as e:
                         if self.result == 'Except': #如果 Resulr == Except 不會判定為 Fail
                             pass
@@ -633,6 +636,11 @@ class mobile_urgent_controller:
                         parlay_result_dict['%s Mix Parlay'%"、".join(do_sports_list)] = betting_result
                     elif parlay_type == '3':
                         parlay_result_dict['%s Lucky Parlay'%"、".join(do_sports_list)] = betting_result
+                else:
+                    if parlay_type == '1':
+                        parlay_result_dict['Cross Sports/Markets Mix Parlay'] = False
+                    elif parlay_type == '2':
+                        parlay_result_dict['Cross Sports/Markets System Parlay'] = False
 
         else:
             sport_list = ['Soccer']
@@ -683,7 +691,11 @@ class mobile_urgent_controller:
                             parlay_result_dict['Soccer Mix Parlay'] = betting_result
                         elif parlay_type == '2':
                             parlay_result_dict['Soccer System Parlay'] = betting_result
-
+                    else:
+                        if parlay_type == '1':
+                            parlay_result_dict['Soccer Mix Parlay'] = False
+                        elif parlay_type == '2':
+                            parlay_result_dict['Soccer System Parlay'] = False
         return parlay_result_dict
     
     def statement_responce_generate(self,settled_info):
@@ -760,7 +772,7 @@ class TestRegression:
         bettype_id_list = [85,90] 
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Number Game')
         mobile_api_betting_test.process_betting(bettype_id_list = bettype_id_list)
-    
+
     def test_soccer_parlay_betting(self):
         allure.dynamic.story("Betting 測試")
         mobile_api_betting_test = mobile_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='soccer parlay')

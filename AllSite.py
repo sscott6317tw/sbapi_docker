@@ -20,7 +20,8 @@ class Site_Api(Env):
         # key 為 api , value 為一個 二為陣列
         self.response_time_dict = { 'Login':[], 'UserProfile': [] ,
         'Balance': [] , 'ShowAllOdds': [], 'GetTickets': [] , 'GetMarket': [] , 'ProcessBet':[], 
-        'JSResourceApi' : []   , 'GetContirbutetor': [] , 'Running_GetEarly': []
+        'JSResourceApi' : []   , 'GetContirbutetor': [] , 'Running_GetEarly': [], 'Running_GetRunning': [],
+        'Statement_GetStatement': [] , 'Statement_GetAllStatement': [] , 
              }
  
     
@@ -94,7 +95,7 @@ class Site_Api(Env):
         except:
             self.log.error(' %s set_odds_type fail '%self.login_site ) 
             
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False'  ) 
 
             self.response_dict['UserProfile'] = response_data
 
@@ -115,7 +116,7 @@ class Site_Api(Env):
         except Exception as e:
             self.log.error(' %s balance fail : %s '%(self.login_site ,e )) 
             
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False' ) 
 
             self.response_dict['Balance'] = response_data
 
@@ -135,7 +136,7 @@ class Site_Api(Env):
         except Exception as e:
             self.log.error(' %s JSResourceApi fail : %s '%(self.login_site ,e )) 
             
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False' ) 
 
             self.response_dict['JSResourceApi'] = response_data
 
@@ -156,9 +157,69 @@ class Site_Api(Env):
         except Exception as e:
             self.log.error(' %s Running_GetEarly fail : %s '%(self.login_site ,e )) 
             
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response ='False'  ) 
 
             self.response_dict['Running_GetEarly'] = response_data
+
+        # Running_GetRunning
+        try:
+        
+            api.Running_GetRunning()
+
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['Running_GetRunning'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'Running_GetRunning' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s Running_GetRunning fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response ='False'  ) 
+
+            self.response_dict['Running_GetRunning'] = response_data
+
+        # Statement_GetStatement
+        try:
+        
+            api.Statement_GetStatement()
+
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['Statement_GetStatement'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'Statement_GetStatement' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s Statement_GetStatement fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response ='False'  ) 
+
+            self.response_dict['Statement_GetStatement'] = response_data
+
+        # Statement_GetAllStatement
+        try:
+        
+            api.Statement_GetAllStatement()
+
+            response_data = self.return_data(url =  api.req_url , response = api.error_msg  , 
+            request_time= api.request_time ) 
+
+            self.response_dict['Statement_GetAllStatement'] = response_data
+            self.retrun_2d_list(site_name = site , api_name = 'Statement_GetAllStatement' , 
+                request_time = api.request_time )
+
+
+        except Exception as e:
+            self.log.error(' %s Statement_GetAllStatement fail : %s '%(self.login_site ,e )) 
+            
+            response_data = self.return_data(url =  api.req_url , response ='False'  ) 
+
+            self.response_dict['Statement_GetAllStatement'] = response_data
 
         # get_contirbutetor
         try:
@@ -176,7 +237,7 @@ class Site_Api(Env):
         except Exception as e:
             self.log.error(' %s GetContirbutetor fail : %s '%(self.login_site ,e )) 
             
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False'  ) 
 
             self.response_dict['GetContirbutetor'] = response_data
         
@@ -194,7 +255,7 @@ class Site_Api(Env):
         except:
             self.log.error(' %s ShowAllOdds fail '%self.login_site ) 
 
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False' ) 
 
             self.response_dict['ShowAllOdds'] = response_data
 
@@ -213,7 +274,7 @@ class Site_Api(Env):
         except:
 
             self.log.error(' %s GetMarket fail '%self.login_site ) 
-            response_data = self.return_data(url =  api.req_url , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url , response = 'False' ) 
 
             self.response_dict['GetMarket'] = response_data
             
@@ -275,8 +336,16 @@ class Site_Api(Env):
             
             elif self.site_dict[site]['ProcessBet']['response'].isdigit() is False: # process bet 回傳的 string 不是 訂單 (全為數字)
                 self.response_dict['Status'] = '2'
-                self.lets_talk[site] = 'Error'
             else:# 登入 成功, process bet 也有訂單號回傳
+                for other_api in self.response_dict.keys():
+                    if other_api in ['Login','ProcessBet']:
+                        continue
+                    if self.response_dict[other_api]['response'] == 'False':
+                        self.response_dict['Status'] = '1'
+                        self.lets_talk[site] = 'Error'
+                        return 'Done'
+                    else:
+                        continue
                 self.response_dict['Status'] = '0'
             
             return 'Done'
@@ -337,7 +406,7 @@ else:
     
 node_type = Common().get_node_type()# 0 local , 1 remote
 
-
+'''
 try:
     con = DataBaseInfo(env_index = int(node_type))
     con.mysql_insert(Data =  site_api_test.site_dict , Status = Status  )
@@ -345,3 +414,4 @@ try:
 except Exception as e:
     log.error('DB 建立有誤 : %s'%e )
 
+'''

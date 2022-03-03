@@ -5,7 +5,6 @@ from collections import defaultdict
 import execjs
 import hashlib
 from PIL import Image
-from numpy import False_
 import pytesseract,os,time
 from  Logger import create_logger 
 import pathlib
@@ -453,6 +452,69 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.stress_dict['response'].append(r.text) 
             logger.error('MyBets/GetStatusCount Api Fail')
             return False
+
+    def Statement_GetAllStatement(self):# /Statement/GetAllStatement_ch?datatype=0&bfday=1&_=
+        now = int(time.time()*1000)
+        self.req_url = '/Statement/GetAllStatement_ch?datatype=0&bfday=1&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            OpeningBalance = repspone_json['OpeningBalance'] 
+            self.error_msg  = ' OpeningBalance : %s'%(OpeningBalance)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Statement_GetAllStatement Api Fail')
+            return False
+
+    def Statement_GetStatement(self):# '/Statement/GetStatementOVR?bfday=1&_='
+
+        now = int(time.time()*1000)
+        self.req_url = '/Statement/GetStatementOVR?bfday=1&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            ticketcount = repspone_json['ticketcount'] 
+            self.error_msg  = ' ticket_count : %s'%(ticketcount)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Statement_GetStatement Api Fail')
+            return False
+
+
+    def Running_GetRunning(self):#/Running/GetRunningOVR
+        now = int(time.time()*1000)
+        self.req_url = '/Running/GetRunningOVR?RunningType=E&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            ticketcount = repspone_json['ticketcount'] 
+            self.error_msg  = ' ticket_count : %s'%(ticketcount)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Running_GetRunning Api Fail')
+            return False
+    
     
     def Running_GetEarly(self): #Running/GetEarly
 
@@ -1080,7 +1142,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('betting response message: %s'%Itemdict['Message'])
             #logger.info('self.post_data: %s'%self.post_data)
             if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','maximum number of bets','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
-                self.error_msg = Itemdict['ErrorCode']
+                error_msg = Itemdict['Message']
+                if 'maximum number of bets' in error_msg:
+                    error_msg = 'maximum number of bets has been exceeded for this match.'
+                self.error_msg = error_msg
                 logger.error('response : %s'%Itemdict['Message'] )
                 return Itemdict['Message']
             else:

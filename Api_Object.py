@@ -365,9 +365,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
 
-            #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            if 'LicLogin/index' in r.url:
+                logger.error('response : %s'%r.text)
+                self.stress_login_dict['error'].append('false')#失敗 存放
+                return False
             
-
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
             #logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
             
@@ -375,7 +378,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             if 'Message' in self.url:
                 self.error_msg = self.url.split('Message=')[1]
                 return self.error_msg
-
             '''
             api site 不是每個 登入後的都會帶 session url ,ex: bbin
             這會再 showallodds 有不同的判斷

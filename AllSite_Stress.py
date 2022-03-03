@@ -1,12 +1,5 @@
 #In[]
-from asyncio.log import logger
 from collections import defaultdict
-from concurrent.futures import thread
-import re
-from tkinter import E
-from gevent import sleep
-
-from itsdangerous import exc
 import Api_Object
 from  Logger import create_logger 
 import threading , time , random
@@ -14,7 +7,6 @@ from functools import reduce
 import csv , requests 
 from Api_Object import Mobile_Api
 
-from queue import Queue
 
 
 
@@ -46,10 +38,10 @@ class AllSite_Stress:
         'GetContributor':{'url': '/main/GetContributor' , 'session_type': 'post', 'data': 'isParlay=false&both=true&defaulteuro=false',
             'headers': ''        
         },
-        'TwoCounter': {'url': '/Like/TwoCounter' , 'session_type': 'get', 'data': 'id=6685%2Fvideo.m3u8&action=1',
+        'TwoCounter': {'url': '/Like/TwoCounter' , 'session_type': 'post', 'data': 'id=6685%2Fvideo.m3u8&action=1',
             'headers': ''        
         },
-        'GetStatusCount': {'url': '/MyBets/GetStatusCount' , 'session_type': 'post', 'data': '',
+        'GetStatusCount': {'url': '/MyBets/GetStatusCount' , 'session_type': 'post', 'data': 'currWC=0',
             'headers': ''        
         },
         'GetLicSiteSpread': {'url': '/SpreadSetting/GetLicSiteSpread' , 'session_type': 'post', 'data': '',
@@ -68,22 +60,65 @@ class AllSite_Stress:
             'headers': ''
         },
 
-        'Result': {'url': 'Result/GetResultDropDownList' , 'session_type': 'post', 
+        'Result': {'url': '/Result/GetResultDropDownList' , 'session_type': 'post', 
         'data':'' , 'headers': ''
             },
         'JSResourceApi': {'url': '/JSResourceApi/GetJSResource' , 'session_type': 'get', 
         'data':'' , 'headers': ''
             },
-        'Running_GetEarly':  {'url': '' , 'session_type': 'get', 
+        'Running_GetEarly':  {'url': '/Running/GetEarly_ch?datatype=0&_=' , 'session_type': 'get', 
         'data':'' , 'headers': ''
             },
-        'GetReferenceData':{'url': 'GetReferenceData/GetBettypeName?lang=en-US' , 'session_type': 'get', 
+        'GetReferenceData':{'url': '/GetReferenceData/GetBettypeName?lang=en-US' , 'session_type': 'get', 
         'data':'' , 'headers': ''
             },
         'GetTopMessage':{'url': '/TopMessage/GetTopMessage' , 'session_type': 'post', 
         'data':'' , 'headers': ''
             },
-
+        'Balance':{'url': '/balance/GetAccountInfo' , 'session_type': 'post', 
+        'data':'localtime=8' , 'headers': ''
+            },
+        'Favorites':{'url': '/Favorites' , 'session_type': 'post', 
+        'data':'' , 'headers': ''
+            },
+        'GetBannerInfo':  {'url': '/Default/GetBannerInfo' , 'session_type': 'post', 
+        'data':'isBeforeBanner=false' , 'headers': ''
+            },
+        'Running_GetRunning':  {'url': '/Running/GetRunningOVR?RunningType=E&_=' , 'session_type': 'get', 
+        'data':'' , 'headers': ''
+            },
+        'Statement/GetStatement':  {'url': '/Statement/GetStatementOVR?bfday=1&_=' , 'session_type': 'get', 
+        'data':'' , 'headers': ''
+            },
+        'Statement/GetAllStatement':  {'url': '/Statement/GetAllStatement_ch?datatype=0&bfday=1&_=' ,
+             'session_type': 'get', 
+        'data':'' , 'headers': ''
+            },
+        'GetMySettingsJson': {'url': '/Setting/GetMySettingsJson' ,
+             'session_type': 'post', 
+        'data':'' , 'headers': ''
+            },
+        'CheckHasMessage': {'url': '/TopMessage/CheckHasMessage' ,
+             'session_type': 'post', 
+        'data':'' , 'headers': ''
+            },
+        'GetSpreadBetTypeGroup':  {'url': '/SpreadSetting/GetSpreadBetTypeGroup' ,
+             'session_type': 'post', 
+        'data':'' , 'headers': ''
+            },
+        'GetUMInfo': {'url': '/UMInfo/GetUMInfo' ,
+             'session_type': 'get', 
+        'data':'' , 'headers': ''
+            },
+        'GetSportSortString': {'url': '/setting/GetSportSortString' ,
+             'session_type': 'post', 
+        'data':'defaulteuro=false' , 'headers': ''
+            }, 
+        'Theme': {'url': '/Theme/Index?operatorId=&templateId=2' ,
+             'session_type': 'get', 
+        'data':'' , 'headers': ''
+            }, 
+ 
 
         }
 
@@ -167,7 +202,7 @@ class AllSite_Stress:
 
             for i in threads:
                 i.start()
-                time.sleep(0.5)
+                time.sleep(0.05)
             for i in threads:
                 i.join()
 
@@ -351,11 +386,13 @@ class AllSite_Stress:
                 data = 'isParlay=false&both=false&defaulteuro=false'
             else:
                 data = 'isParlay=true&both=false&defaulteuro=false'
-        elif func_name == 'Running_GetEarly':
+
+        elif func_name in ['Running_GetEarly', 'Running_GetRunning' , 'Statement/GetStatement', 'Statement/GetAllStatement']:
             now = int(time.time()*1000)
-            api_url = session_url + '/Running/GetEarly_ch?datatype=0&_=%s'%now
+            api_url = session_url + self.api_dict[func_name]['url']+str(now)
+            
             data = ''
-        
+
         else:
             data = self.api_dict[func_name]['data']
         
@@ -434,6 +471,8 @@ class AllSite_Stress:
                 msg =  "Bal: %s , BCredit: %s"%(Data['Bal'], Data['BCredit'] )
 
                 #self.log.info('%s response: %s'%( func_name,msg  ))
+            elif func_name == 'GetBannerInfo':
+                status = repspone_json['status']
 
             elif func_name == 'GetTickets':
                 Data = repspone_json['Data'][0]# list 包字典
@@ -446,25 +485,34 @@ class AllSite_Stress:
                 Data = list(repspone_json.keys())
                 # self.log.info('Data: %s'%(Data ))
 
+            elif func_name == 'Theme':
+                pages = repspone_json['pages']
+
             elif func_name == 'Running_GetEarly':
                 stake_count = repspone_json['StakeCount']
                 ticket_count = repspone_json['TicketCount'] 
+            
+            elif func_name in ['Running_GetRunning','Statement/GetStatement']:
+                ticketcount = repspone_json['ticketcount']
 
             elif func_name == 'GetReferenceData':# a
                 len_response = len(repspone_json)
                 msg = 'response len : %s'%len_response
 
+            elif func_name == 'Statement/GetAllStatement':
+                OpeningBalance=repspone_json['OpeningBalance'] 
+
             
             else:
                 errorcode = repspone_json['ErrorCode']
-                if errorcode != 0:
-                    assert False
-                if func_name == 'GetContributor': # response 內容比較長 ,先顯示 errorcode 即可
-                    pass
-                    #self.log.info('%s response ErrorCode: %s'%( func_name,errorcode  ))
+                if func_name == 'GetUMInfo':
+                    if errorcode != 1:# 1 為 沒um
+                        assert False
                 else:
-                    msg = repspone_json['Data']
-                    #self.log.info('%s response Errorcode: %s,  Data: %s'%( func_name,errorcode,msg  ))
+                    if errorcode != 0:
+                        assert False
+                
+                #self.log.info('%s response Errorcode: %s,  Data: %s'%( func_name,errorcode,msg  ))
 
 
 
@@ -598,6 +646,8 @@ class AllSite_Stress:
 
         init_start = time.perf_counter()
         self.log.info('開始送出請求')
+        api_url = self.api_dict[api_list[0]]['url']
+        self.log.info('url: %s'%api_url)
 
         self.time_start = time.time() #開始計時
         self.time_end = time.time()
@@ -676,13 +726,10 @@ user_num =  ['preview30_test']
 login_user_thread , login , login_site_thread
 
 '''
-allsite = AllSite_Stress( user_num = 30 ,
-site_name = 100)
+allsite = AllSite_Stress( user_num = 1 ,
+site_name = 1)
 
 site_user_session = allsite.login_site_thread()#然後登入 ,會產出 各 site 各用戶 登入 的session
-
-#In[]
-
 
 #In[]
 
@@ -695,6 +742,9 @@ api_list = [ 'UpdateBalance' , 'GetContributor' , 'TwoCounter' , 'GetStatusCount
  'GetLicSiteSpread', 'GetPeakHourSpread', 'GetTickets', 'ExtendToken' ]
  
 Result , JSResourceApi , Running_GetEarly , GetReferenceData , GetTopMessage
+Balance , Favorites , GetBannerInfo , RecommendTickets , Running_GetRunning ,Statement/GetStatement 
+Statement/GetAllStatement , GetMySettingsJson , CheckHasMessage , GetSpreadBetTypeGroup
+GetUMInfo , GetSportSortString , Theme
 
 stop_times 值續打幾秒
 
@@ -706,9 +756,8 @@ data_query 只對 data post 需帶參數 才有影響
 '''
 
 
-
-allsite.thread_func( api_list = [ 'GetContributor' ] , data_query = '' ,
-    site_user_session = site_user_session, stop_times = 120 )
+allsite.thread_func( api_list = [ 'TwoCounter' ] , data_query = '' ,
+    site_user_session = site_user_session, stop_times =  1)
 
 
 allsite.site_sum()#統整 該api 的回應時間 平均(所有site)

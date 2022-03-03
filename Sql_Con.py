@@ -13,8 +13,10 @@ class DataBaseInfo:
         self.password = 'LF64qad32gfecxPOJ603'
 
         self.dbname = 'siteapi'
-        self.db_con = self.mysql_conn()
-
+        try:
+            self.db_con = self.mysql_conn()
+        except:
+            pass
 
     def mysql_conn(self):
         self._conn = pymysql.connect(

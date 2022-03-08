@@ -1,7 +1,6 @@
 
 #In[]
 import Api_Object,  datetime , time
-from collections import defaultdict
 from Common import Env
 from  Logger import create_logger 
 from Sql_Con import DataBaseInfo
@@ -13,7 +12,6 @@ log = create_logger(r"\AutoTest", 'test')
 class Site_Api(Env):
     def __init__(self):
         super().__init__()
-        #self.response_dict = {} #defaultdict(list)#  用來存放 各site 各api 請求的 回復
         self.site_dict = {}# key 為 site , value 為 response_dict
         self.lets_talk = {} #記錄訊息用 
 
@@ -368,14 +366,25 @@ class Site_Api(Env):
             sorted_list[0][0],  sorted_list[0][1],          
             sorted_list[-1][0],  sorted_list[-1][1],  )  )
         print('排序完成')
-   
-            
+    
+    def ava_api_time(self):# 統計 該api 回復平均時間
+
+        self.ava_api_site = {}# 存放 api  , 統計 平均 時間 
+
+        for api_key in self.response_time_dict.keys():# 把該次 執行all site 的api 取出
+            api_list = self.response_time_dict[api_key] #該 api 執行 所有 site的 時間 list
+            total = round(sum(map(lambda x: float(x[1]), api_list   ))  ,4)# 該 api 執行時間的總和
+            len_api_time = len(api_list)# 該api 多少 site
+            ave = round(total / len_api_time,4)# 平均時間
+            self.ava_api_site[api_key] = ave
+        
+        self.log.info('ava_api_site: %s'%self.ava_api_site)       
 
 
 
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Fun88']
+#site_list = ['W88']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
@@ -403,15 +412,32 @@ else:
     #site_api_test.sort_req_time()
     
     Status = 1
+
+site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
     
 node_type = Common().get_node_type()# 0 local , 1 remote
 
-'''
+
 try:
     con = DataBaseInfo(env_index = int(node_type))
-    con.mysql_insert(Data =  site_api_test.site_dict , Status = Status  )
-    log.info(' 此次 insert資料 OK' )
+    con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status  )
+    log.info(' All site api insert資料 OK' )
 except Exception as e:
-    log.error('DB 建立有誤 : %s'%e )
+    log.error('All site site_data_insert db 有誤 : %s'%e )
+#con = DataBaseInfo(env_index = int(node_type))
+con.site_response_insert(  Data =  site_api_test.ava_api_site   )# 平均時間 insert
+history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復資料
 
 '''
+歷史平均 回覆時間 
+history_ava_response 為 list 裡面包每次 執行 all site 的 query (dict)
+'''
+
+
+
+
+
+con.db_con.close()
+
+
+

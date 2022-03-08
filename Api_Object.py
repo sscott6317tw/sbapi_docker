@@ -364,7 +364,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
 
-            logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
             if 'LicLogin/index' in r.url:
                 logger.error('response : %s'%r.text)
                 self.stress_login_dict['error'].append('false')#失敗 存放
@@ -439,6 +439,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         
     def GetStatusCount(self): #/MyBets/GetStatusCount
         data = 'currWC=0'
+        self.req_url = '/MyBets/GetStatusCount'
         r = self.stress_request_post(request_data= data, func_url = '/MyBets/GetStatusCount' )
         try:
             repspone_json = r.json()

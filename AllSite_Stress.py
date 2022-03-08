@@ -118,6 +118,10 @@ class AllSite_Stress:
              'session_type': 'get', 
         'data':'' , 'headers': ''
             }, 
+        'OnlineUser': {'url': '/OnlineUser' ,
+             'session_type': 'post', 
+        'data':'' , 'headers': ''
+            }, 
  
 
         }
@@ -457,11 +461,13 @@ class AllSite_Stress:
         return data_format
 
             
-    def retrun_response(self, response ,func_name  , site):# 對 response做處理
+    def retrun_response(self, response ,func_name ,site ):# 對 response做處理
         try:
-            if func_name == '/':# 沒有 response json ,渲染html
-                response
-            
+            if func_name in ['/', 'OnlineUser']:# 沒有 response json ,渲染html
+                if response.status_code != 200:
+                    assert False
+                self.Stress_reponse[func_name].append(self.request_time)
+                return True
             
             # 其他有 json 格式]
             repspone_json = response.json()
@@ -726,8 +732,8 @@ user_num =  ['preview30_test']
 login_user_thread , login , login_site_thread
 
 '''
-allsite = AllSite_Stress( user_num = 1 ,
-site_name = 1)
+allsite = AllSite_Stress( user_num = 30 ,
+site_name = 50)
 
 site_user_session = allsite.login_site_thread()#然後登入 ,會產出 各 site 各用戶 登入 的session
 
@@ -744,7 +750,7 @@ api_list = [ 'UpdateBalance' , 'GetContributor' , 'TwoCounter' , 'GetStatusCount
 Result , JSResourceApi , Running_GetEarly , GetReferenceData , GetTopMessage
 Balance , Favorites , GetBannerInfo , RecommendTickets , Running_GetRunning ,Statement/GetStatement 
 Statement/GetAllStatement , GetMySettingsJson , CheckHasMessage , GetSpreadBetTypeGroup
-GetUMInfo , GetSportSortString , Theme
+GetUMInfo , GetSportSortString , Theme , OnlineUser
 
 stop_times 值續打幾秒
 
@@ -756,8 +762,8 @@ data_query 只對 data post 需帶參數 才有影響
 '''
 
 
-allsite.thread_func( api_list = [ 'TwoCounter' ] , data_query = '' ,
-    site_user_session = site_user_session, stop_times =  1)
+allsite.thread_func( api_list = [ 'GetContributor' ] , data_query = '' ,
+    site_user_session = site_user_session, stop_times =  300)
 
 
 allsite.site_sum()#統整 該api 的回應時間 平均(所有site)

@@ -417,7 +417,7 @@ site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
     
 node_type = Common().get_node_type()# 0 local , 1 remote
 
-
+'''
 try:
     con = DataBaseInfo(env_index = int(node_type))
     con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status  )
@@ -426,18 +426,17 @@ except Exception as e:
     log.error('All site site_data_insert db 有誤 : %s'%e )
 #con = DataBaseInfo(env_index = int(node_type))
 con.site_response_insert(  Data =  site_api_test.ava_api_site   )# 平均時間 insert
-history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復資料
-
-'''
-歷史平均 回覆時間 
-history_ava_response 為 list 裡面包每次 執行 all site 的 query (dict)
-'''
-
-
-
+history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復資料 , 為 list 裡面包每次 執行 all site 的 query (dict)
 
 
 con.db_con.close()
+
+'''
+
+
+
+
+
 
 
 

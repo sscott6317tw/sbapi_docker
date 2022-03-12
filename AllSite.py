@@ -241,7 +241,11 @@ class Site_Api(Env):
         
         
         try:
-            api.ShowAllOdds( )
+            if site == 'Fun88':
+                sport = 'Basketball'
+            else:
+                sport = "Soccer"
+            api.ShowAllOdds(sport= sport )
 
             response_data = self.return_data(url =  api.req_url , response = 'OK' , 
             request_time= api.request_time ) 
@@ -310,7 +314,7 @@ class Site_Api(Env):
         except:
             self.log.error(' %s ProcessBet fail '%self.login_site ) 
             self.log.error('error_msg %s  '%api.error_msg  ) 
-            response_data = self.return_data(url =  api.req_url[1] , response = api.error_msg  ) 
+            response_data = self.return_data(url =  api.req_url[1] , response = 'False'  ) 
             self.response_dict['ProcessBet'] = response_data
         
         #self.Api_Status()# 回傳 該site 的 staus邏輯
@@ -329,6 +333,9 @@ class Site_Api(Env):
         
         try:
             if self.response_dict['Login']['response'] != 'OK':#  Api Fail (接口登入錯誤)
+                self.response_dict['Status'] = '1'
+                self.lets_talk[site] = 'Error'
+            elif self.response_dict['Login']['response'] == 'False':
                 self.response_dict['Status'] = '1'
                 self.lets_talk[site] = 'Error'
             
@@ -384,7 +391,7 @@ class Site_Api(Env):
 
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['W88']
+#site_list = ['Fun88']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
@@ -409,11 +416,9 @@ if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 e
 else:
     log.info('All Site Pass : %s'%site_list )
     log.info('Response Time : %s'%site_api_test.response_time_dict )
-    #site_api_test.sort_req_time()
-    
     Status = 1
 
-site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
+    site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
     
 node_type = Common().get_node_type()# 0 local , 1 remote
 

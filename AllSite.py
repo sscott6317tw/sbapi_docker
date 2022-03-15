@@ -37,12 +37,13 @@ class Site_Api(Env):
         self.login_site = '%s - %s'%(device, site)
         self.response_dict = {}
         self.odds_domain = ""
+        self.login_fail = ''
         # 登入
         try:
             
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
-                
+
             elif site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash' ]:
                 login_user = 'qatest04'
             else:
@@ -73,6 +74,9 @@ class Site_Api(Env):
             self.log.error(' %s login fail , msg: %s '%(self.login_site, api.error_msg ))
 
             response_data = self.return_data(url =  api.url , response = api.error_msg ) 
+            if 'CheckCentralInfo+faile' in  api.error_msg:
+                self.login_fail = 'CheckCentralInfo'
+                return False
             
             self.response_dict['Login'] = response_data
 
@@ -417,6 +421,9 @@ try:
     for site in site_list:
         log.info('site : %s'%site)
         site_api_test.site_api_betting_process(site = site  )# 執行整個 case流程
+        if site_api_test.login_fail == 'CheckCentralInfo':
+            site_list.remove(site)
+            continue
         site_api_test.Api_Status(site)# 回傳 該site 的 staus邏輯
 
         # 針對 odds provider 的 showallodds , 增加資料結構 

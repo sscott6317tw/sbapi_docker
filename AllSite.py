@@ -21,8 +21,9 @@ class Site_Api(Env):
         'JSResourceApi' : []   , 'GetContirbutetor': [] , 'Running_GetEarly': [], 'Running_GetRunning': [],
         'Statement_GetStatement': [] , 'Statement_GetAllStatement': [] , 
              }
- 
-    
+        
+        self.odds_server_domain = []# 存放 odds provider 的 list    
+        self.odds_server_time = []# 存放 odds provider 的 回覆時間 list
         self.log = log
 
         #print( self.url_dict)
@@ -35,15 +36,18 @@ class Site_Api(Env):
     def site_api_betting_process(self , site ,device = 'mobile'):
         self.login_site = '%s - %s'%(device, site)
         self.response_dict = {}
-        
+        self.odds_domain = ""
         # 登入
         try:
-            if site in ['Xtu168','Senibet', 'Yibo', 'Alog', 'Fun88', '11Bet','Bbin']:
-                login_user = 'qatest03'
-            else:
+            
+            if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
+            else:
+        
+                login_user = 'qatest03'
             self.site_dict[site] = self.response_dict
             
+            log.info('%s 登入 user: %s'%(site, login_user))
             api = Api_Object.Login(sec_times = 1 ,stop_times = 1 ).login_api(device = device , user= login_user,
             url = self.api_url_dict[device][site]     ,
             central_account='web.desktop', central_password='1q2w3e4r', site = site )
@@ -63,7 +67,7 @@ class Site_Api(Env):
 
         
         except:
-            self.log.error(' %s login fail '%self.login_site )
+            self.log.error(' %s login fail , msg: %s '%(self.login_site, api.error_msg ))
 
             response_data = self.return_data(url =  api.url , response = api.error_msg ) 
             
@@ -241,18 +245,28 @@ class Site_Api(Env):
         
         
         try:
+            '''
             if site == 'Fun88':
                 sport = 'Basketball'
             else:
                 sport = "Soccer"
-            api.ShowAllOdds(sport= sport )
-
+            '''
+            sport = "Soccer"
+            api.ShowAllOdds(sport= sport, market = ['e'] )
+            
             response_data = self.return_data(url =  api.req_url , response = 'OK' , 
             request_time= api.request_time ) 
 
             self.response_dict['ShowAllOdds'] = response_data
 
             self.retrun_2d_list(site_name = site , api_name = 'ShowAllOdds' , request_time = api.request_time )
+
+
+            if api.OddsServerUrl is None:
+                pass
+            else:# 針對 odds provider 的showallodds 存放資料結構
+                self.showall_odds_time = float(api.request_time)
+                self.odds_domain = api.OddsServerUrl.split('.')[0] + '\n' + site# \n 是為了到傳給圖 有個患行
 
         except:
             self.log.error(' %s ShowAllOdds fail '%self.login_site ) 
@@ -316,7 +330,7 @@ class Site_Api(Env):
             self.log.error('error_msg %s  '%api.error_msg  ) 
             response_data = self.return_data(url =  api.req_url[1] , response = 'False'  ) 
             self.response_dict['ProcessBet'] = response_data
-        
+            #self.lets_talk[site] = api.error_msg 
         #self.Api_Status()# 回傳 該site 的 staus邏輯
         return True
 
@@ -373,7 +387,7 @@ class Site_Api(Env):
             sorted_list[0][0],  sorted_list[0][1],          
             sorted_list[-1][0],  sorted_list[-1][1],  )  )
         print('排序完成')
-    
+
     def ava_api_time(self):# 統計 該api 回復平均時間
 
         self.ava_api_site = {}# 存放 api  , 統計 平均 時間 
@@ -396,30 +410,43 @@ site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
 print('開始執行時間 : %s'%datetime.datetime.now().strftime('%Y-%m-%d/%H:%M:%S') )
+try:
+    for site in site_list:
+        log.info('site : %s'%site)
+        site_api_test.site_api_betting_process(site = site  )# 執行整個 case流程
+        site_api_test.Api_Status(site)# 回傳 該site 的 staus邏輯
 
-for site in site_list:
-    log.info('site : %s'%site)
-    site_api_test.site_api_betting_process(site = site  )# 執行整個 case流程
-    site_api_test.Api_Status(site)# 回傳 該site 的 staus邏輯
+        # 針對 odds provider 的 showallodds , 增加資料結構 
+        if site_api_test.odds_domain != "":# 沒有 odds provider 的不做處理
+            site_api_test.odds_server_domain.append(site_api_test.odds_domain)
+            site_api_test.odds_server_time.append(site_api_test.showall_odds_time)
 
-time_end = time.time()
+    time_end = time.time()
 
-print('完成時間 : ',  time_end - time_start,'s')
-#log.info('all site : %s'%site_api_test.site_dict)
-log.info('letstalk : %s'%site_api_test.lets_talk)
+    print('完成時間 : ',  time_end - time_start,'s')
+    #log.info('all site : %s'%site_api_test.site_dict)
+    log.info('letstalk : %s'%site_api_test.lets_talk)
 
 
-if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 error
-    Status = 0 # insert 狀態  錯誤
-    #log.info('All Site Login Fail : %s'%site_api_test.lets_talk)
 
-else:
-    log.info('All Site Pass : %s'%site_list )
-    log.info('Response Time : %s'%site_api_test.response_time_dict )
-    Status = 1
+    if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 error
+        Status = 0 # insert 狀態  錯誤
+        #log.info('All Site Login Fail : %s'%site_api_test.lets_talk)
 
-    site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
-    
+    else:
+        log.info('All Site Pass : %s'%site_list )
+        log.info('Response Time : %s'%site_api_test.response_time_dict )
+        Status = 1
+        site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
+        log.info('odds_server_domain: %s'%site_api_test.odds_server_domain)
+        log.info('odds_server_time: %s'%site_api_test.odds_server_time)
+
+except Exception as e:
+    log.error('error : %s'%e)
+    site_api_test.lets_talk[site] = 'Error'
+
+
+
 node_type = Common().get_node_type()# 0 local , 1 remote
 
 '''

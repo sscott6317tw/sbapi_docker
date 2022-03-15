@@ -405,7 +405,7 @@ class Site_Api(Env):
 
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Fun88']
+#site_list = ['Ae88']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
@@ -420,6 +420,7 @@ try:
         if site_api_test.odds_domain != "":# 沒有 odds provider 的不做處理
             site_api_test.odds_server_domain.append(site_api_test.odds_domain)
             site_api_test.odds_server_time.append(site_api_test.showall_odds_time)
+        time.sleep(0.5)
 
     time_end = time.time()
 

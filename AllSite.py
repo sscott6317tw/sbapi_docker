@@ -416,13 +416,14 @@ site_list = list(Env().api_url_dict['mobile'].keys())
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
+login_CheckCentralInfo_site = []
 print('開始執行時間 : %s'%datetime.datetime.now().strftime('%Y-%m-%d/%H:%M:%S') )
 try:
     for site in site_list:
         log.info('site : %s'%site)
         site_api_test.site_api_betting_process(site = site  )# 執行整個 case流程
         if site_api_test.login_fail == 'CheckCentralInfo':
-            site_list.remove(site)
+            login_CheckCentralInfo_site.append(site)# 先存放 ,在 後面 在刪除
             continue
         site_api_test.Api_Status(site)# 回傳 該site 的 staus邏輯
 
@@ -438,7 +439,11 @@ try:
     #log.info('all site : %s'%site_api_test.site_dict)
     log.info('letstalk : %s'%site_api_test.lets_talk)
 
-
+    if len(login_CheckCentralInfo_site) == 0:
+        pass
+    else:
+        for login_fail in login_CheckCentralInfo_site:
+            site_list.remove(login_fail)
 
     if len(site_api_test.lets_talk) != 0:# 不等於 0 代表 Api_Status 有回傳 error
         Status = 0 # insert 狀態  錯誤

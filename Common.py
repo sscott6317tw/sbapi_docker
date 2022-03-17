@@ -188,7 +188,7 @@ class Env:
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
         'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.ofje104.com/apilogin',
         'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
-        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 'Tlc': 'http://ismart.1731788.com/apilogin' ,
+        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 
         'Sm88': 'http://x3g8mb.pg5688.com/apilogin', 'BgCV': 'http://f5j1mb.pg5688.com/apilogin',
         'FB88': 'http://j1f9mb.pg5688.com/apilogin' , '368Cash': 'http://b8d6mb.fx9888.com/apilogin', 
         'A1game': 'http://b9p1mb.fx9888.com/apilogin'

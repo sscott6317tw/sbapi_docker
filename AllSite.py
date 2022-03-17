@@ -44,7 +44,7 @@ class Site_Api(Env):
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
             
-            if site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash','Tlc' ]:
+            elif site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash' ]:
                 login_user = 'qatest04'
             else:
         

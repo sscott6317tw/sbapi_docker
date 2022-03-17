@@ -40,11 +40,11 @@ class Site_Api(Env):
         self.login_fail = ''
         # 登入
         try:
-            
+            '''
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
-
-            elif site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash' ]:
+            '''
+            if site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash','Tlc' ]:
                 login_user = 'qatest04'
             else:
         
@@ -439,6 +439,7 @@ try:
     #log.info('all site : %s'%site_api_test.site_dict)
     log.info('letstalk : %s'%site_api_test.lets_talk)
 
+    # 需 把 所以執行的site 移除 有 登入 是 CheckCentralInfo 訊息的 site
     if len(login_CheckCentralInfo_site) == 0:
         pass
     else:

@@ -40,10 +40,10 @@ class Site_Api(Env):
         self.login_fail = ''
         # 登入
         try:
-            '''
+            
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
-            '''
+            
             if site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash','Tlc' ]:
                 login_user = 'qatest04'
             else:

@@ -40,13 +40,13 @@ class Site_Api(Env):
         self.login_fail = ''
         # 登入
         try:
-            
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
             elif site == 'Macaubet':
                 login_user = 'autotest02'
             else:
                 login_user = 'qatest04'
+
             self.site_dict[site] = self.response_dict
             
             log.info('%s 登入 user: %s'%(site, login_user))
@@ -299,7 +299,6 @@ class Site_Api(Env):
 
             self.response_dict['GetMarket'] = response_data
             
-
 
         try:# betting 接口 , 裡面包含  get ticket 的 接口
             result = api.DoplaceBet()

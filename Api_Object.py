@@ -164,7 +164,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.url = url
         self.default_url = url
         self.login_type = ''# api site 為 空字串
-        if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url:
+        if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url or 'macaubet' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
         self.api_site = ''# 預設空
         self.password = password
@@ -283,8 +283,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] =  'XMLHttpRequest'
             self.headers['Content-Type'] =  'application/x-www-form-urlencoded; charset=UTF-8'
             #logger.info('headers: %s'%self.headers)
+            start = time.perf_counter()# 計算請求時間用
             
             r = self.client_session.post(self.url  + '/Login/index',data=login_data,headers=self.headers,verify=False)
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
             try:
                 repspone_json = r.json()
                 #logger.info('response: %s'%repspone_json)
@@ -324,7 +326,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             '''
             這邊 api site 登入 , 如果登入 成功會回傳 True , 其餘失敗的 都會回傳 字串, 不會回傳 False, 因為 ALL Site 要接失敗訊息
             '''
-            start = time.perf_counter()# 計算請求時間用
+            
             try:
                 if 'stress_site' in site:
                     self.url = stress_url
@@ -343,7 +345,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 return self.error_msg
             
             
-            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+            
             
             
             #LicLogin , DepositLogin
@@ -357,13 +359,15 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] = 'XMLHttpRequest'
             self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
             
+            start = time.perf_counter()# 計算請求時間用
             try:# 這邊 try login 如果遇到 503 或者別問題
                 r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
             
             except Exception as e:
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
-
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+            
             #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
             if 'LicLogin/index' in r.url:
                 logger.error('response : %s'%r.text)

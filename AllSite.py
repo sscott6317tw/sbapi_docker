@@ -43,12 +43,10 @@ class Site_Api(Env):
             
             if site in ['Tlc','Fun88']:
                 login_user = 'twqa09'
-            
-            elif site in ['Bbin3', '11Bet' ,'Ae88', 'Xtu168', 'BgCV', '368Cash' ]:
-                login_user = 'qatest04'
+            elif site == 'Macaubet':
+                login_user = 'autotest02'
             else:
-        
-                login_user = 'qatest03'
+                login_user = 'qatest04'
             self.site_dict[site] = self.response_dict
             
             log.info('%s 登入 user: %s'%(site, login_user))
@@ -431,7 +429,7 @@ try:
         if site_api_test.odds_domain != "":# 沒有 odds provider 的不做處理
             site_api_test.odds_server_domain.append(site_api_test.odds_domain)
             site_api_test.odds_server_time.append(site_api_test.showall_odds_time)
-        time.sleep(0.5)
+        #time.sleep(0.5)
 
     time_end = time.time()
 

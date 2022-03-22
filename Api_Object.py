@@ -316,6 +316,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 logger.info('NET_SessionId: %s'%NET_SessionId )
                 self.login_session[user] = NET_SessionId
                 #logger.info('self.login_session: %s'%self.login_session)
+
+                try:
+                    r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
+                    self.whoami_ip = self.return_IP(r= r)
+                    logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+                except:
+                    logger.error('whoami 取得 ip有誤')
+                    self.error_msg = 'whoami 取得 ip有誤'
                 return True
             except Exception as e:
                 logger.info('Login Api Fail: %s'%e)
@@ -402,7 +410,15 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
             else:
                 pass
-                
+            
+            try:
+                r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
+                self.whoami_ip = self.return_IP(r= r)
+                logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+            except:
+                logger.error('whoami 取得 ip有誤')
+                self.error_msg = 'whoami 取得 ip有誤'
+
             return True
 
     def GetReferenceData(self):#GetReferenceData/GetBettypeName?lang=en-US 

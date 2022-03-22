@@ -5,6 +5,7 @@ from Common import Env
 from  Logger import create_logger 
 from Sql_Con import DataBaseInfo
 from Common import Common
+import requests
 
 
 log = create_logger(r"\AutoTest", 'test')
@@ -24,6 +25,8 @@ class Site_Api(Env):
         
         self.odds_server_domain = []# 存放 odds provider 的 list    
         self.odds_server_time = []# 存放 odds provider 的 回覆時間 list
+        self.site_server_ip = {} #存放 各site 打到 的 server
+
         self.log = log
 
         #print( self.url_dict)
@@ -40,16 +43,15 @@ class Site_Api(Env):
         self.login_fail = ''
         # 登入
         try:
-            if site in ['Tlc','Fun88']:
+            if site in ['Tlc','Fun88','Macaubet']:
                 login_user = 'twqa09'
-            elif site == 'Macaubet':
-                login_user = 'autotest02'
+
             else:
                 login_user = 'qatest04'
 
             self.site_dict[site] = self.response_dict
-            
-            log.info('%s 登入 user: %s'%(site, login_user))
+            login_url = self.api_url_dict[device][site]
+            log.info('%s 登入 user: %s , url : %s'%(site, login_user , login_url))
             api = Api_Object.Login(sec_times = 1 ,stop_times = 1 ).login_api(device = device , user= login_user,
             url = self.api_url_dict[device][site]     ,
             central_account='web.desktop', central_password='1q2w3e4r', site = site )
@@ -66,6 +68,12 @@ class Site_Api(Env):
             self.response_dict['Login'] = response_data
             
             self.retrun_2d_list(site_name = site , api_name = 'Login' , request_time = api.request_time )
+            
+            self.site_server_ip[site.upper()] = api.whoami_ip
+            
+            
+            #self.site_server_ip.append('%s\n'%site+  api.whoami_ip)# 回傳打到的server
+
 
         
         except:
@@ -403,13 +411,54 @@ class Site_Api(Env):
             ave = round(total / len_api_time,4)# 平均時間
             self.ava_api_site[api_key] = ave
         
-        self.log.info('ava_api_site: %s'%self.ava_api_site)       
+        self.log.info('ava_api_site: %s'%self.ava_api_site)   
+
+
+    def site_online_user(self, site_list):
+        site_user = {}
+    
+        session = requests.Session()
+        headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    
+                    }
+
+        try:
+            r = session.get( 'http://endless.hl5888.com/Licensee/Latest' ,verify=False ,  
+            timeout= 10  ,headers=headers )
+        except:
+           self.log.error('site_user: False')
+           return False 
+
+        respons_json = r.json()# 為一個 list ,包各間site所有 字典
+        #site_name = 'Mayayule'
+        
+        new_dict = {}
+        for site_dict in respons_json:
+            #print(site_dict)
+            new_dict [site_dict['name'].upper() ] = site_dict['count'] 
+
+        #print(new_dict.keys())
+        for  site in site_list:# 把 site 取出來
+            upper_site = site.upper()
+            try:
+
+                if upper_site in list(new_dict.keys()) :
+                    site_user[upper_site] = new_dict[upper_site]
+                else:
+                    self.log.info('不再 endless: %s'%upper_site)
+            except:
+                self.log.error('error: %s'%upper_site)             
+            
+
+        
+        self.log.info('site_user: %s'%site_user)   
 
 
 
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Ae88']
+#site_list = ['Macaubet']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
@@ -428,6 +477,8 @@ try:
         if site_api_test.odds_domain != "":# 沒有 odds provider 的不做處理
             site_api_test.odds_server_domain.append(site_api_test.odds_domain)
             site_api_test.odds_server_time.append(site_api_test.showall_odds_time)
+
+
         #time.sleep(0.5)
 
     time_end = time.time()
@@ -454,6 +505,10 @@ try:
         site_api_test.ava_api_time()# 統計 此次 各 api 平均的回覆時間
         log.info('odds_server_domain: %s'%site_api_test.odds_server_domain)
         log.info('odds_server_time: %s'%site_api_test.odds_server_time)
+        
+        log.info('site_server_ip: %s'%site_api_test.site_server_ip)
+        site_api_test.site_online_user(site_list = site_list)
+
 
 except Exception as e:
     log.error('error : %s'%e)

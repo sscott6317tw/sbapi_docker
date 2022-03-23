@@ -18,44 +18,6 @@ class Stress(Common):
 
         #self.host = host
 
-    def return_IP(self,r):# 抓取 response的 IP
-        try:
-            respone = r.text
-            #self.log.info('回復: %s'%respone)
-            html = BeautifulSoup(respone,'lxml')# type為 bs4類型
-            
-            table_ = html.find_all('table',class_= 'table')
-            if len(table_) == 0:# desktop 沒有 table 元素 
-                taglist = html.find_all('body')
-                if 'Server IP:' in respone:
-                    self.Parsing = 'Desktop 0'#解析方式
-                    for trtag in taglist:
-                        a = (trtag.text)
-                    return  (a.split('Server IP:')[1].split('Key:')[0].split(':')[0]  )
-                elif 'IP' not in respone:
-                    self.Parsing = 'Desktop no IP to 解析'
-                    for trtag in taglist:
-                        a = (trtag.text)
-                    return a
-                else:
-                    self.Parsing = 'Desktop 1'
-                    for trtag in taglist:
-                        a = (trtag.text)
-                    return (a.split('Server IP :')[1].split('Port')[0]   )
-
-            else:# mobile 有 table 屬性
-                self.Parsing = 'Moble'
-                taglist = html.find_all('tr')
-                for trtag in taglist:  
-                    tdlist = trtag.find_all('td')
-        
-                    if 'IP' in  tdlist[0].text:
-                        return(tdlist[1].text)
-                
-        except Exception as e:
-            self.log.error('%s 有誤 :%s'%(self.url, e))
-            self.log.error('%s'%respone)
-            return '回復 response 有誤'
     
 
     def Url(self):# 請求 URL  func
@@ -102,8 +64,8 @@ class Stress(Common):
 參數說明:  
 sec_times: 併發, stop_times: 幾秒後結束,
 '''
-stess_ini = Stress(url= 'https://ismart.a0228.gamehby.com/whoami.aspx',
-sec_times= 10 , stop_times = 1 ).return_loading_balance()
+stess_ini = Stress(url= 'http://fbw.oriental-game.com/whoami.aspx?key=9527',
+sec_times= 1 , stop_times = 1 ).return_loading_balance()
 
 
 

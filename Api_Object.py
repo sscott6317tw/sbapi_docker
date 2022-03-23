@@ -6,12 +6,13 @@ from collections import defaultdict
 import execjs
 import hashlib
 from PIL import Image
-from numpy import False_
 import pytesseract,os,time
 from  Logger import create_logger 
 import pathlib
 from Common import Common,betteam_trans
 import csv,re
+from Common import Common
+import csv,re , requests
 import urllib3 , json
 import asyncio
 from datetime import datetime
@@ -174,7 +175,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.url = url
         self.default_url = url
         self.login_type = ''# api site 為 空字串
-        if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url:
+        if 'athena' in self.url or 'nova88' in self.url or 'spondemo' in self.url or 'macaubet' in self.url:
             self.login_type = 'athena' # 是 api site 登入 還是  athena site登入 , login方式不一樣
         self.api_site = ''# 預設空
         self.password = password
@@ -190,8 +191,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         self.site = site
         self.error_msg = ''# 用來判斷 成功訊息 (AllSite.py)
         self.queue = queue
-        
 
+        #key 分別是 site , session_url , session ,value 分別放 list 
+        self.stress_login_dict = defaultdict(list)#用來 存放 stress 壓測  login session 
+        self.site_stress = {}# key 為 site , value 為 self.stress_login_dict
 
     '''
     共用 url 請求 的方式, 包含回傳 請求時間, 請求相關資訊放到 stress_dict, 避免每個新增街口, 都要寫一次
@@ -268,7 +271,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     '''
     athena 需叫 本地js , api site 直接 在 url 後面增加query 參數
     '''
-    def mobile_login(self,user,central_account='',central_password=''):# Mobile Login街口邏輯
+    def mobile_login(self,user,central_account='',central_password='',site='',stress_url = ''):# Mobile Login街口邏輯
         
         self.user = user
         if self.login_type  == 'athena':# athena 登入
@@ -291,8 +294,10 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] =  'XMLHttpRequest'
             self.headers['Content-Type'] =  'application/x-www-form-urlencoded; charset=UTF-8'
             #logger.info('headers: %s'%self.headers)
+            start = time.perf_counter()# 計算請求時間用
             
             r = self.client_session.post(self.url  + '/Login/index',data=login_data,headers=self.headers,verify=False)
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
             try:
                 repspone_json = r.json()
                 #logger.info('response: %s'%repspone_json)
@@ -322,6 +327,14 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 logger.info('NET_SessionId: %s'%NET_SessionId )
                 self.login_session[user] = NET_SessionId
                 #logger.info('self.login_session: %s'%self.login_session)
+
+                try:
+                    r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
+                    self.whoami_ip = self.return_IP(r= r)
+                    logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+                except:
+                    logger.error('whoami 取得 ip有誤')
+                    self.error_msg = 'whoami 取得 ip有誤'
                 return True
             except Exception as e:
                 logger.info('Login Api Fail: %s'%e)
@@ -332,18 +345,26 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             '''
             這邊 api site 登入 , 如果登入 成功會回傳 True , 其餘失敗的 都會回傳 字串, 不會回傳 False, 因為 ALL Site 要接失敗訊息
             '''
-            start = time.perf_counter()# 計算請求時間用
+            
             try:
+                if 'stress_site' in site:
+                    self.url = stress_url
+                    #logger.info('stress url : %s'%self.url)
+                    self.client_session = requests.Session()
+                    strss_site_session = self.client_session
+
                 r = self.client_session.get(self.url,verify=False)
                 session_url = r.url # api site 需先拿到 session url 在做登入
                 #logger.info('登入前 session url: %s'%session_url)
             except Exception as e:
                 logger.error(' url 請求 有誤 : %s'%e)
                 self.error_msg = 'login get error : %s'%e
+                self.stress_login_dict['error'].append('false')#失敗 存放
+
                 return self.error_msg
             
             
-            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
+            
             
             
             #LicLogin , DepositLogin
@@ -357,24 +378,28 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['X-Requested-With'] = 'XMLHttpRequest'
             self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
             
+            start = time.perf_counter()# 計算請求時間用
             try:# 這邊 try login 如果遇到 503 或者別問題
                 r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
             
             except Exception as e:
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
-
-            #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
             
-
+            #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
+            if 'LicLogin/index' in r.url:
+                logger.error('response : %s'%r.text)
+                self.stress_login_dict['error'].append('false')#失敗 存放
+                return False
+            
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
-            logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
+            #logger.info('登入後 的 session url: %s'%self.url)# 登入後的轉導url
             
 
             if 'Message' in self.url:
                 self.error_msg = self.url.split('Message=')[1]
                 return self.error_msg
-
             '''
             api site 不是每個 登入後的都會帶 session url ,ex: bbin
             這會再 showallodds 有不同的判斷
@@ -383,11 +408,33 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.api_site = 'web'
             else:
                self.api_site = 'odds provider' 
+            if site == 'stress_user' :# 壓測 才做這下面的 存放   壓測login user 方式
+                new_dict = {} 
+                new_dict['session'] =  self.client_session
+                new_dict['url'] =  self.url
+                self.site_stress[user] = new_dict
+            elif 'stress_site' in site:#壓測 login site 方式
+                site_name = site.split('stress_site_')[-1]
+                self.stress_login_dict['site_name'].append(site_name)
+                self.stress_login_dict['session'].append(strss_site_session)
+                self.stress_login_dict['url'].append(self.url)
+
+            else:
+                pass
+            
+            try:
+                r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
+                self.whoami_ip = self.return_IP(r= r)
+                logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+            except:
+                logger.error('whoami 取得 ip有誤')
+                self.error_msg = 'whoami 取得 ip有誤'
+
             return True
 
     def GetReferenceData(self):#GetReferenceData/GetBettypeName?lang=en-US 
 
-        r = self.stress_request_get( func_url = 'GetReferenceData/GetBettypeName?lang=en-US ')
+        r = self.stress_request_get( func_url = 'GetReferenceData/GetBettypeName?lang=en-US')
         try:
             repspone_json = r.json()
             len_response = len(repspone_json)
@@ -423,6 +470,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
         
     def GetStatusCount(self): #/MyBets/GetStatusCount
         data = 'currWC=0'
+        self.req_url = '/MyBets/GetStatusCount'
         r = self.stress_request_post(request_data= data, func_url = '/MyBets/GetStatusCount' )
         try:
             repspone_json = r.json()
@@ -436,6 +484,69 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.stress_dict['response'].append(r.text) 
             logger.error('MyBets/GetStatusCount Api Fail')
             return False
+
+    def Statement_GetAllStatement(self):# /Statement/GetAllStatement_ch?datatype=0&bfday=1&_=
+        now = int(time.time()*1000)
+        self.req_url = '/Statement/GetAllStatement_ch?datatype=0&bfday=1&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            OpeningBalance = repspone_json['OpeningBalance'] 
+            self.error_msg  = ' OpeningBalance : %s'%(OpeningBalance)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Statement_GetAllStatement Api Fail')
+            return False
+
+    def Statement_GetStatement(self):# '/Statement/GetStatementOVR?bfday=1&_='
+
+        now = int(time.time()*1000)
+        self.req_url = '/Statement/GetStatementOVR?bfday=1&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            ticketcount = repspone_json['ticketcount'] 
+            self.error_msg  = ' ticket_count : %s'%(ticketcount)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Statement_GetStatement Api Fail')
+            return False
+
+
+    def Running_GetRunning(self):#/Running/GetRunningOVR
+        now = int(time.time()*1000)
+        self.req_url = '/Running/GetRunningOVR?RunningType=E&_=%s'%now
+        r = self.stress_request_get( func_url = self.req_url)
+        try:
+            repspone_json = r.json()
+            ticketcount = repspone_json['ticketcount'] 
+            self.error_msg  = ' ticket_count : %s'%(ticketcount)
+ 
+            self.stress_dict['response'].append('msg: %s'%self.error_msg )
+
+            logger.info('msg: %s '%(self.error_msg  ) )
+            return True
+        except:
+            self.error_msg  = r.text
+            logger.error('response :%s'%self.error_msg )
+            self.stress_dict['response'].append(self.error_msg ) 
+            logger.error('Running_GetRunning Api Fail')
+            return False
+    
     
     def Running_GetEarly(self): #Running/GetEarly
 
@@ -791,11 +902,18 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.error_msg = r.text 
             logger.error('mobile GetMarkets Api Fail : %s'%self.error_msg)
             return False
+        
+        import random #亂數排列字典，讓程式不要重複下到原本的 Match ID
+        match_id = list(self.MatchId.keys())
+        random.shuffle(match_id)
 
-        MatchId_value = self.MatchId[match_id]
-        logger.info('MatchId_value: %s'%MatchId_value)
-        match_key = list(repspone_json['Data'].keys())[0]
-        NewOdds = repspone_json['Data'][match_key]['NewOdds']
+        MatchId_value = self.MatchId[match_id[0]]
+        #logger.info('MatchId_value: %s'%MatchId_value)
+
+        match_key = list(repspone_json['Data'].keys())
+        ran_index = random.randint(0, len(match_key)-1 )
+
+        NewOdds = repspone_json['Data'][match_key[ran_index]]   ['NewOdds']
         
         for index, dict_ in enumerate(NewOdds):
             new_dict = {}
@@ -819,7 +937,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
         Market_value = self.MarketId
         self.Match_dict[0] = Market_value
-
+        #logger.info('self.Match_dict[0] : %s'%self.Match_dict[0])
 
 
 
@@ -964,6 +1082,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             logger.info('self.Match_dict 1 : %s'%len(self.Match_dict[1]))
             logger.info('self.Match_dict 2: %s'%len(self.Match_dict[2]))
         else:
+            #logger.info('self.Match_dict[0] : %s'%self.Match_dict[0])
             return self.Match_dict[0]
 
     def Betting_response(self,response,times,BetTypeId=''):# 針對 投注 回復 做解析
@@ -1054,9 +1173,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #self.order_value['Message'] = Itemdict['Message']
             logger.info('betting response message: %s'%Itemdict['Message'])
             #logger.info('self.post_data: %s'%self.post_data)
-            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
-                
-                #logger.info('self.post_data: %s'%self.post_data)
+            if any(error_code in Itemdict['Message'] for error_code in  ['Odds has changed','maximum number of bets','min','updating odds',"has been changed","is closed","System Error","temporarily closed","IN-PLAY"] ):
+                error_msg = Itemdict['Message']
+                if 'maximum number of bets' in error_msg:
+                    error_msg = 'maximum number of bets has been exceeded for this match.'
+                self.error_msg = error_msg
+                logger.error('response : %s'%Itemdict['Message'] )
                 return Itemdict['Message']
             else:
                 pass
@@ -1324,6 +1446,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                             ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
                             Team1 =Team1, Team2= Team2 ,odds=odds ,gameid = self.gameid,betteam = bet_team,  bet_type = "OU")
+                            #logger.info('data_format : %s'%data_format)
+                        
                         except Exception as e:
                             logger.error('data_format: %s'%e)
                 else:
@@ -1751,22 +1875,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             
                             r = self.client_session.post(self.url  + '/BetV2/GetTickets',data = data_str.encode(),
                                     headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
-                            '''
-                            try:
-                                repspone_json = r.json()
-                                if any(_bet_team in self.betting_info['bet_team'] for _bet_team in  ['aos','AOS']) or any(_BetTypeId in str(self.betting_info['BetTypeId']) for _BetTypeId in ['468','469']): #如果是 aos 就要抓取 SrcOddsInfo，並放到 postdata 裡面
-                                    SrcOddsInfo = repspone_json['Data'][0]['SrcOddsInfo']
-                                    data_str = "ItemList[0][SrcOddsInfo]={SrcOddsInfo}&".format(SrcOddsInfo= SrcOddsInfo) + data_str
-                                self.bet_stake = repspone_json['Data'][0]['Minbet']
-                                logger.info('GetTickets OK')
-                                if "ItemList%5B" in data_str:
-                                    data_str = "ItemList%5B0%5D%5Bstake%5D={bet_stake}&".format(bet_stake = self.bet_stake) + data_str
-                                else:                                
-                                    data_str = "ItemList[0][stake]={bet_stake}&".format(bet_stake = self.bet_stake) + data_str
-                            except Exception as e:
-                                logger.error('Single Bet Get Ticket 有誤 : '+str(e))
-                                return 'GetTickets False'
-                            '''
                             try:
                             
                                 self.ticket_Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict

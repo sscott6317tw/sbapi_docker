@@ -2,6 +2,13 @@
 import requests,subprocess
 from selenium import webdriver
 import threading,time, configparser
+import winreg , os , requests , zipfile
+from Logger import create_logger
+from bs4 import BeautifulSoup
+log = create_logger(r"\AutoTest", 'test')
+
+
+
 
 class Common:
     '''
@@ -16,8 +23,59 @@ class Common:
         self.session = requests.Session()
         self.sec_times = sec_times
         self.stop_times = stop_times
-   
+
+    def get_Chrome_version(self):#取得local Chrome version
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Google\Chrome\BLBeacon')
+        version, types = winreg.QueryValueEx(key, 'version')
+        local_version = version.split('.')[0]
+        log.info('local Chrome version : %s'%local_version)
+        return local_version
+
+    def get_Driver_version(self):
+        '''查询系统内的Chromedriver版本'''
+        local_driver_version = os.popen('chromedriver --version').read().split(' ')[1].split('.')[0]
+        log.info('local driver version : %s'%local_driver_version)
+        return local_driver_version
+
+
+    def get_server_chrome_versions(self, version):# version 需帶 數字,去抓去 網站上有的 chromedriver
+        '''return all versions list'''
+
+        #down_ver_list = []# 存放 有mapping 到的 chromedriver version
+        url="https://registry.npmmirror.com/-/binary/chromedriver/"
+        rep = requests.get(url).json()# list 裡麵包字典
+        for dict_ in rep:
+            split_version = dict_['name'].split('.')[0]# # 抓取 name 並把 他取出 70.0.3538.97/ > 70
+            if version == split_version:
+                down_url = dict_['url']
+                log.info('抓到 對應的 driver 版本 : %s'%dict_['name'])
+                return down_url+ 'chromedriver_win32.zip'
+
+    def download_driver(self, download_url):
+        '''下载文件'''
+        file = requests.get(download_url)
+        with open("chromedriver.zip", 'wb') as zip_file:        # 保存文件到脚本所在目录
+            zip_file.write(file.content)
+        new_driver = self.get_Chrome_version()
+        log.info('新driver: %s 下载成功'%new_driver)
+
+
+    def unzip_driver(self):
+        '''解压Chromedriver压缩包到指定目录'''
+        f = zipfile.ZipFile("chromedriver.zip",'r')
+        for file in f.namelist():
+            f.extract(file, '.')
+        log.info('解壓縮成功')
+
     def get_driver(self):
+        local_chrome = self.get_Chrome_version()
+        local_driver = self.get_Driver_version()
+        if local_chrome == local_driver:
+            log.info('local chrome version 和 driver version 一致 , 無須 下載')
+        else:
+            down_url = self.get_server_chrome_versions(local_chrome)
+            self.download_driver(down_url)
+            self.unzip_driver()
 
         try:
             chrome_options = webdriver.ChromeOptions()
@@ -29,6 +87,45 @@ class Common:
         except Exception as e :
             print('get driver :%s'%e)
             time.sleep(1)
+
+    def return_IP(self,r):# 抓取 response的 IP
+        try:
+            respone = r.text
+            #self.log.info('回復: %s'%respone)
+            html = BeautifulSoup(respone,'lxml')# type為 bs4類型
+            
+            table_ = html.find_all('table',class_= 'table')
+            if len(table_) == 0:# desktop 沒有 table 元素 
+                taglist = html.find_all('body')
+                if 'Server IP:' in respone:
+                    self.Parsing = 'Desktop 0'#解析方式
+                    for trtag in taglist:
+                        a = (trtag.text)
+                    return  (a.split('Server IP:')[1].split('Key:')[0].split(':')[0]  )
+                elif 'IP' not in respone:
+                    self.Parsing = 'Desktop no IP to 解析'
+                    for trtag in taglist:
+                        a = (trtag.text)
+                    return a
+                else:
+                    self.Parsing = 'Desktop 1'
+                    for trtag in taglist:
+                        a = (trtag.text)
+                    return (a.split('Server IP :')[1].split('Port')[0]   )
+
+            else:# mobile 有 table 屬性
+                self.Parsing = 'Moble'
+                taglist = html.find_all('tr')
+                for trtag in taglist:  
+                    tdlist = trtag.find_all('td')
+        
+                    if 'IP' in  tdlist[0].text:
+                        return(tdlist[1].text)
+                
+        except Exception as e:
+            log.error('%s 有誤 :%s'%(self.url, e))
+            log.error('%s'%respone)
+            return '回復 response 有誤'
 
     def threads(self, func_name_list ):# 併發邏輯
         print('同時併發: %s次, %s 秒鐘後結束'%(self.sec_times,self.stop_times ) )
@@ -131,11 +228,17 @@ class Common:
 class Env:
     def __init__(self):
         self.api_url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
-        'Bbin': 'http://o8x6ma.pg5688.com/apilogin', '12Bet': 'http://ismart.wew77.com/apilogin',
+        'M88':'http://ismart.zjc988.com/apilogin', 
+        'ECLBET': 'http://p4b0mb.258088.net/apilogin', '12Bet': 'http://ismart.12bet.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
-        'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'https://m2s8ma.gi6688.com/apilogin',
-        'Fun88' : 'https://ismart.fahuathuat.com/apilogin', 'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
-        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 'Tlc': 'http://ismart.1731788.com/apilogin' ,
+        'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.ofje104.com/apilogin',
+        'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
+        'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 
+        'Sm88': 'http://x3g8mb.pg5688.com/apilogin', 'BgCV': 'http://f5j1mb.pg5688.com/apilogin',
+        'FB88': 'http://j1f9mb.pg5688.com/apilogin' , '368Cash': 'http://b8d6mb.fx9888.com/apilogin', 
+        'A1game': 'http://b9p1mb.fx9888.com/apilogin', 'Bbin': 'https://ismart.playbooksb.com/apilogin',
+        'Macaubet': 'http://smart.macaubetonline.com/', 'Fun88': 'http://ismart.fun88.com/apilogin',
+
         
           },
         

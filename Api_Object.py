@@ -284,8 +284,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             self.headers['Content-Type'] =  'application/x-www-form-urlencoded; charset=UTF-8'
             #logger.info('headers: %s'%self.headers)
             start = time.perf_counter()# 計算請求時間用
-            
-            r = self.client_session.post(self.url  + '/Login/index',data=login_data,headers=self.headers,verify=False)
+            try:
+                r = self.client_session.post(self.url  + '/Login/index',data=login_data,
+                headers=self.headers,verify=False, timeout=10)
+            except:
+                logger.error('url 訪問 超過 10 s')
+                self.error_msg = 'login get error : %s'%e
+                return False
             self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
             try:
                 repspone_json = r.json()
@@ -342,7 +347,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     self.client_session = requests.Session()
                     strss_site_session = self.client_session
 
-                r = self.client_session.get(self.url,verify=False)
+                r = self.client_session.get(self.url,verify=False,timeout=10)
                 session_url = r.url # api site 需先拿到 session url 在做登入
                 #logger.info('登入前 session url: %s'%session_url)
             except Exception as e:

@@ -73,7 +73,7 @@ class Site_Api(Env):
             
             self.retrun_2d_list(site_name = site , api_name = 'Login' , request_time = api.request_time )
             
-            self.site_server_ip[site.upper()] = api.whoami_ip
+            self.site_server_ip[site.upper()] = api.whoami_ip.split('.',2)[2]
             
             
             #self.site_server_ip.append('%s\n'%site+  api.whoami_ip)# 回傳打到的server

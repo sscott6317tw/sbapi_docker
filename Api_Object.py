@@ -2823,6 +2823,7 @@ class Desktop_Api(Login):
                     match_set = set(match_list)
                     match_list = list(match_set)
                 for matchid in match_list:
+                    logger.info('抓取 %s More Bettype'%matchid  )
                     self.matchid = matchid
                     self.bet_type = 'more'
                     betting_info_list = asyncio.new_event_loop().run_until_complete(startup(remote))

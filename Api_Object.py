@@ -2525,8 +2525,11 @@ class Desktop_Api(Login):
                                                     pass
                                         else:
                                             for _betting_info in _rec:
+                                                if '"type":"m"' in _betting_info :
+                                                    more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
+                                                    more_str = '"morecount":"%s",'%more_count
                                                 if 'oddsid' in _betting_info:
-                                                    betting_info.append(_betting_info)
+                                                    betting_info.append(more_str+_betting_info)
                                     if sport != 'Cross Sports':
                                         return betting_info
                                     else:
@@ -2558,7 +2561,7 @@ class Desktop_Api(Login):
                                     rec = mes.decode()
                                 except:
                                     rec = None
-                                print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
+                                #print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
                                 if '0{"sid' in str(rec):
                                     await converse.send('2')
                                 elif "40" == str(rec):
@@ -2631,7 +2634,9 @@ class Desktop_Api(Login):
                                     Match_dict[re.findall('"oddsid":"BVS_(.+?)",',betting_info)[0]] = new_dict
                             else:
                                 new_dict = {}
-                                match_list.append(re.findall('"matchid":(.+?),',betting_info)[0]) #先幫 More 抓取所有 Match ID
+                                if "parlay" not in self.bet_type: 
+                                    if int(re.findall('"morecount":"([0-9]+)",',betting_info)[0]) > 2 :
+                                        match_list.append(re.findall('"matchid":(.+?),',betting_info)[0]) #先幫 More 抓取所有 Match ID
                                 if '"bettype":10' in betting_info: #Outright 的
                                     new_dict['MatchId'] = re.findall('"matchid":"o(.+?)",',betting_info)[0]
                                     new_dict['BetTypeId'] = re.findall('"bettype":(.+?),',betting_info)[0]
@@ -2711,7 +2716,7 @@ class Desktop_Api(Login):
                                                     pass
                                     odds_id = re.findall('"oddsid":(.+?),',betting_info)[0].replace('"','').replace('os_','').replace('es_','')
                                     Match_dict[odds_id] = new_dict
-                                self.match_list_dict[sport][market] = match_list
+                        self.match_list_dict[sport][market] = list(set(match_list))
                     else:
                         for sport_filter in betting_info_list.keys():
                             cross_sports_parlay_Match_dict = {}

@@ -2425,7 +2425,7 @@ class Desktop_Api(Login):
                             try:
                                 mes = await converse.receive()
                                 rec = mes.decode()
-                                print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
+                                #print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
                                 if '0{"sid' in str(rec):
                                     await converse.send('2')
                                 elif "40" == str(mes.decode()):

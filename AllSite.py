@@ -26,6 +26,7 @@ class Site_Api(Env):
         self.odds_server_domain = []# 存放 odds provider 的 list    
         self.odds_server_time = []# 存放 odds provider 的 回覆時間 list
         self.site_server_ip = {} #存放 各site 打到 的 server
+        self.over_loading = [] # 存放 超過 10s 的list
 
         self.log = log
 
@@ -35,6 +36,9 @@ class Site_Api(Env):
         new_list = [site_name]
         new_list.append(request_time)# 一個 陣列 [site, 秒數]
         self.response_time_dict[api_name].append(new_list)
+        if float(request_time) > 10:
+            self.over_loading.append(request_time)
+
     
     def site_api_betting_process(self , site ,device = 'mobile'):
         self.login_site = '%s - %s'%(device, site)
@@ -69,7 +73,7 @@ class Site_Api(Env):
             
             self.retrun_2d_list(site_name = site , api_name = 'Login' , request_time = api.request_time )
             
-            self.site_server_ip[site.upper()] = api.whoami_ip
+            self.site_server_ip[site.upper()] = api.whoami_ip.split('.',2)[2]
             
             
             #self.site_server_ip.append('%s\n'%site+  api.whoami_ip)# 回傳打到的server
@@ -435,8 +439,11 @@ class Site_Api(Env):
         
         new_dict = {}
         for site_dict in respons_json:
-            #print(site_dict)
-            new_dict [site_dict['name'].upper() ] = site_dict['count'] 
+            site_name = site_dict['name']
+
+            site_name = site_name.upper()
+            
+            new_dict [site_name ] = site_dict['count'] 
 
         #print(new_dict.keys())
         for  site in site_list:# 把 site 取出來
@@ -450,15 +457,15 @@ class Site_Api(Env):
             except:
                 self.log.error('error: %s'%upper_site)             
             
-
-        
+        # 由大到小 排序
+        site_user = {k: v for k, v in sorted(site_user.items(),reverse=True  , key=lambda item: item[1])}
         self.log.info('site_user: %s'%site_user)   
 
 
 
 site_list = list(Env().api_url_dict['mobile'].keys())
 
-#site_list = ['Macaubet']
+#site_list = ['Happy8']
 site_api_test = Site_Api()
 #In[]
 time_start = time.time() #開始計時 
@@ -508,6 +515,7 @@ try:
         
         log.info('site_server_ip: %s'%site_api_test.site_server_ip)
         site_api_test.site_online_user(site_list = site_list)
+        log.info('over_loading: %s'%site_api_test.over_loading)
 
 
 except Exception as e:

@@ -228,17 +228,17 @@ class Common:
 class Env:
     def __init__(self):
         self.api_url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
-        'M88':'http://ismart.zjc988.com/apilogin', 
+        'Happy8':'http://ismart.zjc988.com/apilogin', 
         'ECLBET': 'http://p4b0mb.258088.net/apilogin', '12Bet': 'http://ismart.12bet.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
-        'Ae88': 'http://u022mb.fx9888.com/apilogin' , 'Senibet':  'http://m2s8mb.ofje104.com/apilogin',
+        'Ae88': 'http://u022mb.fx9888.com/apilogin' , '24AVIA':  'http://y530mb.ofje104.com/apilogin',
         'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
         'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 
-        'Sm88': 'http://x3g8mb.pg5688.com/apilogin', 'BgCV': 'http://f5j1mb.pg5688.com/apilogin',
+        'Sm88': 'http://x3g8mb.pg5688.com/apilogin', 'FB88CV': 'http://e143mb.258088.net/apilogin',
         'FB88': 'http://j1f9mb.pg5688.com/apilogin' , '368Cash': 'http://b8d6mb.fx9888.com/apilogin', 
-        'A1game': 'http://b9p1mb.fx9888.com/apilogin', 'Bbin': 'https://ismart.playbooksb.com/apilogin',
-        'Macaubet': 'http://smart.macaubetonline.com/', 'Fun88': 'http://ismart.fun88.com/apilogin',
-
+        'A1game': 'http://b9p1mb.fx9888.com/apilogin', 'Haifa': 'https://ismart.playbooksb.com/apilogin',
+        'Macaubet': 'http://smart.macaubetonline.com/', 'AsiaBet88': 'http://ismart.fun88.com/apilogin',
+        'ABcasino': 'http://g110mb.258088.net/apilogin'
         
           },
         

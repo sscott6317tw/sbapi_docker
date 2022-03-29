@@ -2360,7 +2360,18 @@ class Desktop_Api(Login):
                         continue
                     logger.info('Your session has been terminated，等待 30 秒後重新登入')
                     desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                    desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                    login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                    if login_result == False:
+                        self.log.info("登入失敗，重新登入")
+                        retry += 1
+                        continue
+                    elif 'Login Too Often' in str(login_result):
+                        self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                        time.sleep(60)
+                        retry += 1
+                        continue
+                    else:
+                        pass
                     self.headers = desktop_api.headers
                     retry += 1
                     self.relogin = True
@@ -3190,7 +3201,18 @@ class Desktop_Api(Login):
                             print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                            desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            if login_result == False:
+                                self.log.info("登入失敗，重新登入")
+                                retry += 1
+                                continue
+                            elif 'Login Too Often' in str(login_result):
+                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                time.sleep(60)
+                                retry += 1
+                                continue
+                            else:
+                                pass
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
@@ -3260,7 +3282,18 @@ class Desktop_Api(Login):
                             print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                            desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            if login_result == False:
+                                self.log.info("登入失敗，重新登入")
+                                retry += 1
+                                continue
+                            elif 'Login Too Often' in str(login_result):
+                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                time.sleep(60)
+                                retry += 1
+                                continue
+                            else:
+                                pass
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
@@ -3692,7 +3725,18 @@ class Desktop_Api(Login):
                     continue
                 logger.info('Your session has been terminated，等待 30 秒後重新登入')
                 desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                if login_result == False:
+                    self.log.info("登入失敗，重新登入")
+                    retry += 1
+                    continue
+                elif 'Login Too Often' in str(login_result):
+                    self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                    time.sleep(60)
+                    retry += 1
+                    continue
+                else:
+                    pass
                 self.headers = desktop_api.headers
                 retry += 1
                 self.relogin = True

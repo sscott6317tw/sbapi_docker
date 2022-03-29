@@ -11,19 +11,19 @@ from aiowebsocket.converses import AioWebSocket
 import datetime,time
 import json
 import demjson
+import sys
 
 from Logger import create_logger
 
 log = create_logger(r"\AutoTest", 'common')
 AlreadyLogin = ""
 
-'''
+
 url = sys.argv[1]
-id=sys.argv[2]
-pw=sys.argv[3]
 '''
 url = 'http://www.athena000.com/'
 id='autoqa02'
+'''
 pw='1q2w3e4r'
 
 
@@ -846,101 +846,6 @@ class TestRegression_statement:
         allure.dynamic.story("Statement 測試")
         #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Virtual Sports')
         result_check(desktop_api)
-
-class TestRegression:   
-
-    def test_soccer_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [1,3] #如果是 Soccer,Basketball,E-Sports 3 個運動就值接指定 HDP，OU
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Soccer')
-        process_betting(desktop_api,sport='Soccer',bettype_id_list = bettype_id_list)
-
-    def test_soccer_parlay_betting(self):
-        allure.dynamic.story("Betting 測試")
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='soccer parlay')
-        process_betting(desktop_api,sport='Basketball',single_sport_parlay=True)
-
-    def test_basketball_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [1,3]
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Basketball')
-        process_betting(desktop_api,sport,bettype_id_list = bettype_id_list)
-    
-    def test_tennis_betting(self):
-        allure.dynamic.story("Betting 測試")
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Tennis')
-        process_betting(desktop_api,sport)
-
-    def test_baseball_betting(self):
-        allure.dynamic.story("Betting 測試")
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Baseball')
-        process_betting(desktop_api,sport)
-    
-    def test_cricket_betting(self):
-        allure.dynamic.story("Betting 測試")
-        ##desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Cricket')
-        process_betting()
-    
-    def test_volleyball_betting(self):
-        allure.dynamic.story("Betting 測試")
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Volleyball')
-        process_betting(desktop_api,sport)
-    
-    def test_esports_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [1,3] 
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='E-Sports')
-        process_betting(desktop_api,sport,bettype_id_list = bettype_id_list)
-    
-    def test_numbergame_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [85,90] 
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Number Game')
-        process_betting(desktop_api,sportbettype_id_list = bettype_id_list)
-
-    def test_turbonumbergame_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [85,90] 
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Turbo Number Game')
-        process_betting(desktop_api,sport,bettype_id_list = bettype_id_list)
-
-    def test_happyfive_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [85,90] 
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Happy 5')
-        process_betting(desktop_api,sport,bettype_id_list = bettype_id_list)
-
-    def test_virtual_sport_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [2705,2707] 
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Virtual Sports')
-        process_betting(desktop_api,sport,bettype_id_list = bettype_id_list)
-
-    def test_cross_sport_parlay_betting(self):
-        allure.dynamic.story("Betting 測試")
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='soccer parlay')
-        process_betting(desktop_api,sport,single_sport_parlay=False)
-
-    def test_statement_check(self):
-        allure.dynamic.story("Statement 測試")
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Virtual Sports')
-        statement_check(desktop_api)
-
-    def test_result_check(self):
-        allure.dynamic.story("Statement 測試")
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Virtual Sports')
-        result_check(desktop_api)
-
-    def Exec_Test(self,case= 'All'):# 執行測試案例, exe_type 為打包pyinstaller 的參數
-        if case == 'All':# 預設執行全部
-            pytest.main(['-s', '-v', 'desktop_urgent.py::TestRegression','-q', '--alluredir', './reports'])
-        
-        elif '-k' in case:# 指定相關字元 testcase , Ex: case: -k Soccer
-            pytest.main(['%s'%case,'desktop_urgent.py','-s', '-v',
-            '-q', '--alluredir', './reports'])
-        
-        else:# 指定 一個testcase ,Ex: case: test_TopMenuLeftSportsMenu
-            pytest.main(['-s', '-v',  'desktop_urgent.py::TestRegression::%s'%case, '--alluredir', './reports'])
 
 def pymain_func(version):
     args = ["-s",  "desktop_urgent.py::TestRegression_%s"%version, "-q", "--alluredir", "./reports"]

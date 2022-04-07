@@ -1,6 +1,4 @@
 #In[]
-
-from ast import Try, excepthandler
 from cmath import e
 from collections import defaultdict
 import execjs
@@ -18,6 +16,7 @@ import asyncio
 from datetime import datetime
 from aiowebsocket.converses import AioWebSocket
 import json
+
 from urllib.parse import urlparse
 urllib3.disable_warnings()
 
@@ -56,10 +55,10 @@ class Login(Common):#取得驗證碼邏輯
             return  mobile_api
         else: #都是桌機
             desktop_api = Desktop_Api(device=device,user=user,url=url,client = client)
-
-
+            retry_count = 0
+            #while True:
             login_rseult = desktop_api.desktop_login(central_account=central_account ,
-            central_password=central_password)
+            central_password=central_password )
 
             if login_rseult is False:
                 return False
@@ -79,7 +78,7 @@ class Login(Common):#取得驗證碼邏輯
         identify_result = pytesseract.image_to_string(identify_result).strip()
         # 刪除圖片
         os.remove(self.img_pic)
-        logger.info('圖片刪除成功')
+        #logger.info('圖片刪除成功')
         return identify_result
     
     def convert_img(self,img, threshold):
@@ -96,26 +95,26 @@ class Login(Common):#取得驗證碼邏輯
     def assert_validation(self):# 驗證碼的流程, 寫成function, 如果有解析失敗,好retry
         
         while True:
-            now = int(time.time()*1000)
-            if 'xideqs' in self.url:# qasb 測試環境 url輸入後 取得當前 xideqseTWIN 的url
-                
-                self.dr.get(self.url)
-                current_url = self.dr.current_url# 取得轉換後的測試url ex: http://qasb.athena000.com:42104/(S(xideqseTWIN-Avzh25wrew0zndzoe3tmqiamhf2X-MXwjdkH3qs47fawD1gZZ))/
-                self.url = current_url.split('?')[0]#?scmt=tab01&ssmt=tab01 移除
-                logger.info('轉換url : %s'%self.url )
-                login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
-                self.dr.get(login_code_url)
-            else:#Production athena000
-                login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
-                logger.info('login_code_url: %s'%login_code_url)
-                self.dr.get(login_code_url)
+
+            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/97.0.4692.99 Safari/537.36'
             
+            r = self.client_session.get(self.url  ,headers= self.headers,verify=False)# 需先拿 session url
+            logger.info('url : %s'%r.url  )
+
+            self.url = r.url
+            now = int(time.time()*1000)
+            login_code_url = '%s/login_code.aspx?%s'%(self.url , now)
+            logger.info('login_code_url: %s'%login_code_url)
+ 
+            self.dr.get(login_code_url)
+
+            self.img_pic = './login_code.jpg' 
             self.dr.get_screenshot_as_file(self.img_pic)
             for i in range(self.download_waiting_time):
                 if os.path.isfile(self.img_pic):
                     logger.info('圖片有找到')
                     break
-                else:
+                else: 
                     logger.info('圖片未找到')
                     time.sleep(1)
                     if i == self.download_waiting_time - 1:
@@ -129,11 +128,10 @@ class Login(Common):#取得驗證碼邏輯
                 logger.info('長度小於4 %s,直接retry'%validate_result)
             else:
                 logger.info('validate_result: %s'%validate_result)
-                if 'qasb' in self.url:
-                    break
+               
                 self.cookies = self.dr.get_cookies()
-                logger.info('cookies: %s'%self.cookies )
-                self.dr.close()
+                #logger.info('cookies: %s'%self.cookies )
+                #self.dr.close()
                 break
         return validate_result
 
@@ -272,7 +270,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
     athena 需叫 本地js , api site 直接 在 url 後面增加query 參數
     '''
     def mobile_login(self,user,central_account='',central_password='',site='',stress_url = ''):# Mobile Login街口邏輯
-        
         self.user = user
         if self.login_type  == 'athena':# athena 登入
             common_js = execjs.compile(self.js_from_file('./login_js/mobile.js'))# 讀取 login js檔
@@ -336,7 +333,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 try:
                     r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
                     self.whoami_ip = self.return_IP(r= r)
-                    logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+                    #logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
                 except:
                     logger.error('whoami 取得 ip有誤')
                     self.error_msg = 'whoami 取得 ip有誤'
@@ -360,17 +357,16 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
                 r = self.client_session.get(self.url,verify=False,timeout=10)
                 session_url = r.url # api site 需先拿到 session url 在做登入
-                #logger.info('登入前 session url: %s'%session_url)
+                who_r = self.client_session.get(self.url.split('apilogin')[0]+ 'whoami.aspx',verify=False)
+                self.whoami_ip = self.return_IP(r= who_r)
+                #logger.info('登入前 打whoami 取得 ip : %s'%self.whoami_ip)
             except Exception as e:
                 logger.error(' url 請求 有誤 : %s'%e)
                 self.error_msg = 'login get error : %s'%e
                 self.stress_login_dict['error'].append('false')#失敗 存放
 
                 return self.error_msg
-            
-            
-            
-            
+
             
             #LicLogin , DepositLogin
             login_query = 'LicLogin/index?lang=en&txtUserName={user}&Password=1q2w3e4r&token=&skin=&CentralAccount={central_account}&CentralPassword={central_password}&menutype=&sportid=&leaguekey=&matchid=&isAPP=\
@@ -386,7 +382,6 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             start = time.perf_counter()# 計算請求時間用
             try:# 這邊 try login 如果遇到 503 或者別問題
                 r =  self.client_session.get(api_login_url, headers=self.headers,verify=False)
-            
             except Exception as e:
                 self.error_msg = 'Login 接口: %s'%e
                 return self.error_msg
@@ -395,7 +390,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             #logger.info('登入接口完 的 回復 url: %s'%r.url)# 登入後的轉導url
             if 'LicLogin/index' in r.url:
                 logger.error('response : %s'%r.text)
+                logger.error('url: %s'%r.url)
                 self.stress_login_dict['error'].append('false')#失敗 存放
+                self.error_msg = r.url
                 return False
             
             self.url = r.url.split('#Sports')[0]# 登入後 就是 拿這個 變數 去做後面 各個街口的使用
@@ -404,6 +401,8 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
 
             if 'Message' in self.url:
                 self.error_msg = self.url.split('Message=')[1]
+                logger.error('url: %s error: %s ,site : %s'%(self.url ,self.error_msg, site))
+                self.stress_login_dict['error'].append('false')#失敗 存放
                 return self.error_msg
             '''
             api site 不是每個 登入後的都會帶 session url ,ex: bbin
@@ -423,14 +422,13 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                 self.stress_login_dict['site_name'].append(site_name)
                 self.stress_login_dict['session'].append(strss_site_session)
                 self.stress_login_dict['url'].append(self.url)
-
             else:
                 pass
             
             try:
                 r = self.client_session.get(self.url+ 'whoami.aspx',verify=False)
                 self.whoami_ip = self.return_IP(r= r)
-                logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
+                #logger.info('登入後 打whoami 取得 ip : %s'%self.whoami_ip)
             except:
                 logger.error('whoami 取得 ip有誤')
                 self.error_msg = 'whoami 取得 ip有誤'
@@ -2212,7 +2210,8 @@ class Desktop_Api(Login):
                         asp_cookie = asp_cookie + ';'# 因為會要串兩個 cookie 字串,需要用 ; 來傳進去
                 logger.info('asp_cookie: %s'%asp_cookie)
                 self.headers['Cookie'] = asp_cookie
-
+            else:
+               pass
         else:# api site
             if 'onelogin' not in self.url:# 多幫忙檢查 ,需要帶 onelogin
                 self.url = self.url + '/onelogin.aspx'
@@ -2226,21 +2225,26 @@ class Desktop_Api(Login):
 
         self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         self.headers['X-Requested-With'] =  'XMLHttpRequest'
-        r = self.client_session.post(self.url  + '/DepositProcessLogin',data=login_data,headers=self.headers,verify=False)
+
+
         
+        logger.info('self.url: %s'%self.url)
+        r = self.client_session.post(self.url  + '/DepositProcessLogin',data=login_data,headers=self.headers,verify=False)
+
+
         try:
             #if self.login_type == 'athena':# athena 回復格式 有json 
             repspone_json = r.json()
             logger.info('response: %s'%repspone_json)
             if repspone_json['ShowErrorMsg'] == 'The validation code has expired.' or repspone_json['ErrorCode'] !='':
                 logger.info('登入 Fail')
-                return False
+                return 'retry'
 
             reponse_url = r.json()['url']# 取得登入後 轉導url
             logger.info('reponse_url: %s'%reponse_url)
         
             if 'qasb' in self.url or 'xide' in self.url:# 有sesion 的判斷
-                Val_url = '%s'%( reponse_url)
+                Val_url = '%s/%s'%(self.url ,  reponse_url)
                 logger.info('Val_url: %s'%Val_url)#/ValidateTicket?Guid=fa426c9c-739d-4b37-9589-db13ab0b1cdd
                 r = self.client_session.get(Val_url,headers=self.headers,verify=False)
                 logger.info('r.url: %s'%r.url)
@@ -2260,9 +2264,9 @@ class Desktop_Api(Login):
             self.login = 'login ready'
             #需重新抓取 Net Session ID
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
-            post_url = 'http://member.athena000.com/EntryIndex/OpenSports'
-            logger.info('post_url: %s'%post_url)
-            open_sports = self.session.get("http://member.athena000.com/EntryIndex/OpenSports",headers = self.headers)
+            #post_url = 'http://member.athena000.com/EntryIndex/OpenSports'
+            #logger.info('post_url: %s'%post_url)
+            open_sports = self.session.get("%s/EntryIndex/OpenSports"%self.member_url,headers = self.headers)
             cookie_session = self.session.cookies.get_dict()
 
             NET_SessionId = cookie_session['ASP.NET_SessionId']
@@ -2271,7 +2275,7 @@ class Desktop_Api(Login):
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
 
-
+            logger.info('登入 成功')
             return True
 
         except:

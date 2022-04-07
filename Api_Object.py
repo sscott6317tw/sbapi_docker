@@ -106,15 +106,22 @@ class Login(Common):#取得驗證碼邏輯
         
         while True:
             now = int(time.time()*1000)
-            if 'xideqs' in self.url:# qasb 測試環境 url輸入後 取得當前 xideqseTWIN 的url
-                
+            #先提取 Url 確認是否有 Session
+            if 'xideqs' in self.url or '43100' in self.url:# qasb 測試環境 url輸入後 取得當前 xideqseTWIN 的url
                 self.dr.get(self.url)
-                current_url = self.dr.current_url# 取得轉換後的測試url ex: http://qasb.athena000.com:42104/(S(xideqseTWIN-Avzh25wrew0zndzoe3tmqiamhf2X-MXwjdkH3qs47fawD1gZZ))/
+                #r = self.session.get(self.url  ,headers=self.headers,verify=False)
+                current_url = self.dr.current_url
+                #current_url = r.url# 取得轉換後的測試url ex: http://qasb.athena000.com:104/(S(xideqseTWIN-Avzh25wrew0zndzoe3tmqiamhf2X-MXwjdkH3qs47fawD1gZZ))/
                 self.url = current_url.split('?')[0]#?scmt=tab01&ssmt=tab01 移除
                 logger.info('轉換url : %s'%self.url )
+                if "/NewIndex" in self.url:
+                    self.url = self.url.replace("/NewIndex",'')
                 login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
                 self.dr.get(login_code_url)
+                print(self.dr.current_url)
             else:#Production athena000
+                if "/NewIndex" in self.url:
+                    self.url = self.url.replace("/NewIndex",'')
                 login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
                 logger.info('login_code_url: %s'%login_code_url)
                 self.dr.get(login_code_url)
@@ -134,16 +141,26 @@ class Login(Common):#取得驗證碼邏輯
             
             if validate_result.isdigit() is False:# 檢查取得的驗證碼是否都是數值,如果有字母 馬上retry
                 logger.info('有英文字 %s,直接retry'%validate_result)
+                if 'xideqs' in self.url:
+                    self.url = self.url.split('(S')[0] +'NewIndex'
             elif len(validate_result) < 4:#長度小於4也要retry
                 logger.info('長度小於4 %s,直接retry'%validate_result)
             else:
                 logger.info('validate_result: %s'%validate_result)
+                '''
                 if 'qasb' in self.url:
                     break
-                self.cookies = self.dr.get_cookies()
-                logger.info('cookies: %s'%self.cookies )
-                self.dr.close()
-                break
+                '''
+                if 'xideqs' in self.url:
+                    r = self.session.get(self.url+'/NewIndex/GetLabel'  ,headers=self.headers,verify=False)
+                    self.cookies =  r.cookies
+                    #self.dr.close()
+                    break
+                else:
+                    self.cookies = self.dr.get_cookies()
+                    logger.info('cookies: %s'%self.cookies )
+                    self.dr.close()
+                    break
         return validate_result
 
     def js_from_file(self,file_name):# 讀取js 加密邏輯  CFS
@@ -2221,6 +2238,8 @@ class Desktop_Api(Login):
                         asp_cookie = asp_cookie + ';'# 因為會要串兩個 cookie 字串,需要用 ; 來傳進去
                 logger.info('asp_cookie: %s'%asp_cookie)
                 self.headers['Cookie'] = asp_cookie
+            else:
+                pass
 
         else:# api site
             if 'onelogin' not in self.url:# 多幫忙檢查 ,需要帶 onelogin
@@ -2251,7 +2270,7 @@ class Desktop_Api(Login):
             reponse_url = r.json()['url']# 取得登入後 轉導url
             logger.info('reponse_url: %s'%reponse_url)
         
-            if 'qasb' in self.url or 'xide' in self.url:# 有sesion 的判斷
+            if len(self.cookies) == 0:# 有sesion 的判斷
                 Val_url = '%s'%( reponse_url)
                 logger.info('Val_url: %s'%Val_url)#/ValidateTicket?Guid=fa426c9c-739d-4b37-9589-db13ab0b1cdd
                 r = self.client_session.get(Val_url,headers=self.headers,verify=False)
@@ -2264,17 +2283,21 @@ class Desktop_Api(Login):
                 r = self.client_session.get(self.member_url +  '/NewIndex?lang=en&rt=0&webskintype=2',headers=self.headers,verify=False)
                 
             else:
-                u = urlparse(reponse_url)# 擷取 動態 member_url 
-                self.member_url = 'http://%s'%u.netloc
-                logger.info('member_url: %s'% self.member_url)
+                if 'qasb' in self.url:
+                    reponse_url = self.url + reponse_url
+                    self.member_url = self.url
+                else:
+                    u = urlparse(reponse_url)# 擷取 動態 member_url 
+                    self.member_url = 'http://%s'%u.netloc
+                    logger.info('member_url: %s'% self.member_url)
 
                 r = self.client_session.get(reponse_url,headers=self.headers,verify=False)
             self.login = 'login ready'
             #需重新抓取 Net Session ID
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
-            post_url = 'http://member.athena000.com/EntryIndex/OpenSports'
+            post_url = '%s/EntryIndex/OpenSports'%self.member_url
             logger.info('post_url: %s'%post_url)
-            open_sports = self.session.get("http://member.athena000.com/EntryIndex/OpenSports",headers = self.headers)
+            open_sports = self.session.get("%s/EntryIndex/OpenSports"%self.member_url,headers = self.headers)
             cookie_session = self.session.cookies.get_dict()
 
             NET_SessionId = cookie_session['ASP.NET_SessionId']
@@ -2286,8 +2309,8 @@ class Desktop_Api(Login):
 
             return True
 
-        except:
-            logger.info('登入 Fail')
+        except Exception as e:
+            logger.info('登入 Fail : %s'%str(e))
             return False
 
     def balance(self):# /NewIndex/GetWalletBalance
@@ -2343,7 +2366,10 @@ class Desktop_Api(Login):
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
             '''
-            self.hm_url = self.member_url.replace('member','hm')
+            if 'qasb' in self.url :
+                self.hm_url = self.member_url.replace("10","11") 
+            else:
+                self.hm_url = self.member_url.replace('member','hm')
 
             post_url = self.hm_url  + '/Sports/'
             logger.info('post_url: %s'%post_url)
@@ -2362,11 +2388,11 @@ class Desktop_Api(Login):
                     desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                     login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                     if login_result == False:
-                        self.log.info("登入失敗，重新登入")
+                        logger.info("登入失敗，重新登入")
                         retry += 1
                         continue
                     elif 'Login Too Often' in str(login_result):
-                        self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                        logger.info("Login Too Often，等待 60 秒後再重新登入")
                         time.sleep(60)
                         retry += 1
                         continue
@@ -2398,7 +2424,10 @@ class Desktop_Api(Login):
         get_sports_api_text = self.show_sports()
         #分析 Web Socket 需要的資料
         try:
-            ms2_url = re.findall('MS2.url = {p: "(.+net)"};',get_sports_api_text)[0]
+            try:
+                ms2_url = re.findall('MS2.url = {p: "(.+net)"};',get_sports_api_text)[0]
+            except:
+                ms2_url = re.findall('MS2\.url = {p: "([0-9]+.[0-9]+.[0-9]+.[0-9]+:.[0-9]+)"',get_sports_api_text)[0]
             WS_token = re.findall('"pnv":{"tk":"(.+)","no"',get_sports_api_text)[0]
             WS_id = re.findall('MS2.id = "(.[0-9]+)";',get_sports_api_text)[0]
         except:
@@ -2525,11 +2554,14 @@ class Desktop_Api(Login):
                                                     pass
                                         else:
                                             for _betting_info in _rec:
-                                                if '"type":"m"' in _betting_info :
-                                                    more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
-                                                    more_str = '"morecount":"%s",'%more_count
-                                                if 'oddsid' in _betting_info:
-                                                    betting_info.append(more_str+_betting_info)
+                                                try:
+                                                    if '"type":"m"' in _betting_info :
+                                                        more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
+                                                        more_str = '"morecount":"%s",'%more_count
+                                                    if 'oddsid' in _betting_info:
+                                                        betting_info.append(more_str+_betting_info)
+                                                except:
+                                                    pass
                                     if sport != 'Cross Sports':
                                         return betting_info
                                     else:
@@ -2933,7 +2965,10 @@ class Desktop_Api(Login):
         
         #logger.info('NET_SessionId: %s'%self.client_session.cookies.get_dict()['ASP.NET_SessionId'])
         start = time.perf_counter()# 計算請求時間用
-        r = self.client_session.post(self.url.replace("www","hm")  + '/Customer/OddsType?set={odds_type}'.format(odds_type=odds_type_dict[odds_type])  ,headers=self.headers,verify=False)
+        if 'qasb' in self.url :
+            r = self.client_session.post(self.url.replace("10","11")  + '/Customer/OddsType?set={odds_type}'.format(odds_type=odds_type_dict[odds_type])  ,headers=self.headers,verify=False)
+        else:
+            r = self.client_session.post(self.url.replace("www","hm")  + '/Customer/OddsType?set={odds_type}'.format(odds_type=odds_type_dict[odds_type])  ,headers=self.headers,verify=False)
         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
         if r.ok == True:
             logger.info('/Customer/OddsType?set Api Success ' )
@@ -2947,7 +2982,7 @@ class Desktop_Api(Login):
         r = self.client_session.post(self.url.replace("www","member")  + '/EntryIndex/SetOddsType' ,data=data  ,headers=self.headers,verify=False)
         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
         if r.ok == True:
-            logger.info('Set Odds Ytpe Success : %s'%odds_type )
+            logger.info('Set Odds type Success : %s'%odds_type )
         else:
             self.error_msg = r.text
             logger.error('Setting Odds Type Api Fail response :%s'%self.error_msg )
@@ -3194,7 +3229,10 @@ class Desktop_Api(Login):
                     BetTypeId_list.append(betting_info)
                     retry = 0
                     while retry < 10 :
-                        r = self.client_session.post(self.url.replace("www","hm")  + '/BettingParlay/GetParlayTickets'  , data = data_str_dict[index_key].encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                        if 'qasb' in self.url :
+                            r = self.client_session.post(self.url.replace("10","11")  + '/BettingParlay/GetParlayTickets'  , data = data_str_dict[index_key].encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                        else:
+                            r = self.client_session.post(self.url.replace("www","hm")  + '/BettingParlay/GetParlayTickets'  , data = data_str_dict[index_key].encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                         if "please try again" in r.text :
                             time.sleep(0.5)
                             retry += 1
@@ -3209,11 +3247,11 @@ class Desktop_Api(Login):
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                             login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                             if login_result == False:
-                                self.log.info("登入失敗，重新登入")
+                                logger.info("登入失敗，重新登入")
                                 retry += 1
                                 continue
                             elif 'Login Too Often' in str(login_result):
-                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                logger.info("Login Too Often，等待 60 秒後再重新登入")
                                 time.sleep(60)
                                 retry += 1
                                 continue
@@ -3274,8 +3312,10 @@ class Desktop_Api(Login):
                     retry = 0
                     while retry < 10 :
                         time.sleep(1)
-                        r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/GetTickets/'  , data = data_str.encode(),
-                                headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                        if 'qasb' in self.url :
+                            r = self.client_session.post(self.url.replace("10","11")  + '/Betting/GetTickets/'  , data = data_str.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                        else:
+                            r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/GetTickets/'  , data = data_str.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                         if "please try again" in r.text :
                             time.sleep(3)
                             retry += 1
@@ -3290,11 +3330,11 @@ class Desktop_Api(Login):
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                             login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                             if login_result == False:
-                                self.log.info("登入失敗，重新登入")
+                                logger.info("登入失敗，重新登入")
                                 retry += 1
                                 continue
                             elif 'Login Too Often' in str(login_result):
-                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                logger.info("Login Too Often，等待 60 秒後再重新登入")
                                 time.sleep(60)
                                 retry += 1
                                 continue
@@ -3378,7 +3418,10 @@ class Desktop_Api(Login):
                 post_data = data_str_dict[0] + data_str_dict[1].replace('ItemList[0]','ItemList[1]') + data_str_dict[2].replace('ItemList[0]','ItemList[2]') + combo_str
                 retry = 0
                 while retry < 10 :
-                    r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    if 'qasb' in self.url :
+                        r = self.client_session.post(self.url.replace("10","11") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    else:
+                        r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                     if "please try again" in r.text :
                         time.sleep(0.5)
                         retry += 1
@@ -3424,7 +3467,10 @@ class Desktop_Api(Login):
              
                 retry = 0
                 while retry < 5 :
-                    r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/ProcessBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    if 'qasb' in self.url :
+                        r = self.client_session.post(self.url.replace("10","11")  + '/Betting/ProcessBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    else:
+                        r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/ProcessBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                     if "please try again" in r.text :
                         time.sleep(2)
                         retry += 1
@@ -3577,6 +3623,8 @@ class Desktop_Api(Login):
 
                 order_value['BetTypeId_list'] = BetTypeId_list
 
+                if 'None' in str(order_value) :
+                    print(str(order_value))
                 logger.info('order_value: %s'%order_value)
                 return order_value
             
@@ -3691,16 +3739,25 @@ class Desktop_Api(Login):
             pass
         elif "IN-PLAY" in error_code:
             post_data = post_data.replace("ItemList[0][IsInPlay]=false","ItemList[0][IsInPlay]=true")
-        if 'parlay' not in self.bet_type:
-            r = self.client_session.post(self.url.replace("www","hm") + '/Betting/ProcessBet',data = post_data,headers=self.headers,verify=False)
+        if 'qasb' in self.url :
+            if 'parlay' not in self.bet_type:
+                r = self.client_session.post(self.url.replace("10","11") + '/Betting/ProcessBet',data = post_data,headers=self.headers,verify=False)
+            else:
+                r = self.client_session.post(self.url.replace("10","11") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
         else:
-            r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+            if 'parlay' not in self.bet_type:
+                r = self.client_session.post(self.url.replace("www","hm") + '/Betting/ProcessBet',data = post_data,headers=self.headers,verify=False)
+            else:
+                r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
         return r,post_data
 
     def get_bet_list_mini(self,transid):
         reget = 0
         while reget < 30:
-            r = self.client_session.post(self.url.replace("www","hm") + '/Statement/BetListMini',data='GMT=8',headers=self.headers,verify=False)
+            if 'qasb' in self.url :
+                r = self.client_session.post(self.url.replace("10","11")  + '/Statement/BetListMini',data='GMT=8',headers=self.headers,verify=False)
+            else:
+                r = self.client_session.post(self.url.replace("www","hm") + '/Statement/BetListMini',data='GMT=8',headers=self.headers,verify=False)
             if transid in r.text:
                 return r.text
                 #bets_list = r.text.replace(' ','').split('bets_title')
@@ -3715,7 +3772,10 @@ class Desktop_Api(Login):
     def get_bet_list_full(self,transid):
         reget = 0
         while reget < 60:
-            r = self.client_session.post(self.url.replace("www","hm") + '/Statement/BetListApp?GMT=8',headers=self.headers,verify=False)
+            if 'qasb' in self.url :
+                r = self.client_session.post(self.url.replace("10","11")  + '/Statement/BetListApp?GMT=8',headers=self.headers,verify=False)
+            else:
+                r = self.client_session.post(self.url.replace("www","hm") + '/Statement/BetListApp?GMT=8',headers=self.headers,verify=False)
             if transid in r.text:
                 return r.text
                 #bets_list = r.text.replace(' ','').split('bets_title')
@@ -3733,11 +3793,11 @@ class Desktop_Api(Login):
                 desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                 login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                 if login_result == False:
-                    self.log.info("登入失敗，重新登入")
+                    logger.info("登入失敗，重新登入")
                     retry += 1
                     continue
                 elif 'Login Too Often' in str(login_result):
-                    self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                    logger.info("Login Too Often，等待 60 秒後再重新登入")
                     time.sleep(60)
                     retry += 1
                     continue
@@ -3757,7 +3817,10 @@ class Desktop_Api(Login):
         if filter_game == "Normal":
             try:
                 data_str = "selectDate=%s"%days
-                r = self.client_session.get(self.url.replace("www","hm")  + '/Result/tabletindex?gmt=8',data = data_str.encode(),headers=self.headers,verify=False)
+                if 'qasb' in self.url :
+                    r = self.client_session.post(self.url.replace("10","11")  + '/Result/tabletindex?gmt=8',data = data_str.encode(),headers=self.headers,verify=False)
+                else:
+                    r = self.client_session.get(self.url.replace("www","hm")  + '/Result/tabletindex?gmt=8',data = data_str.encode(),headers=self.headers,verify=False)
                 result_dropdown_responce = r.json()
                 try:
                     sports_filterList = result_dropdown_responce['SportIdDic']
@@ -3775,7 +3838,10 @@ class Desktop_Api(Login):
                 result_dict = {}
                 for selectedsport in list(sports_filterList):
                     try:
-                        r = self.client_session.get(self.url.replace("www","hm")  + '/Result/tabletindex?selectDate=%s&selectSid=%s&gmt=8'%(days,selectedsport),headers=self.headers,verify=False)
+                        if 'qasb' in self.url :
+                            r = self.client_session.post(self.url.replace("10","11")  + '/Result/tabletindex?selectDate=%s&selectSid=%s&gmt=8'%(days,selectedsport),headers=self.headers,verify=False)
+                        else:
+                            r = self.client_session.get(self.url.replace("www","hm")  + '/Result/tabletindex?selectDate=%s&selectSid=%s&gmt=8'%(days,selectedsport),headers=self.headers,verify=False)
                         get_result_responce = r.status_code
                         if get_result_responce == 200:
                             result_dict.update({sports_filterList[selectedsport] : r.text})
@@ -3792,7 +3858,10 @@ class Desktop_Api(Login):
             try:
                 today = days.split(" to ")[0]
                 yesterday = days.split(" to ")[1]
-                r = self.client_session.get(self.url.replace("www","hm")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8'%(yesterday,today),headers=self.headers,verify=False)
+                if 'qasb' in self.url :
+                    r = self.client_session.post(self.url.replace("10","11")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8'%(yesterday,today),headers=self.headers,verify=False)
+                else:
+                    r = self.client_session.get(self.url.replace("www","hm")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8'%(yesterday,today),headers=self.headers,verify=False)
                 result_dropdown_responce = r.json()
                 try:
                     sports_filterList = result_dropdown_responce['SportIdDic']
@@ -3810,7 +3879,10 @@ class Desktop_Api(Login):
                 result_dict = {}
                 for selectedsport in list(sports_filterList):
                     try:
-                        r = self.client_session.get(self.url.replace("www","hm")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8&selectSid=%s'%(yesterday,today,selectedsport),headers=self.headers,verify=False)
+                        if 'qasb' in self.url :
+                            r = self.client_session.post(self.url.replace("10","11")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8&selectSid=%s'%(yesterday,today,selectedsport),headers=self.headers,verify=False)
+                        else:
+                            r = self.client_session.get(self.url.replace("www","hm")  + '/Result/TabletOutright?sDate=%s&eDate=%s&gmt=8&selectSid=%s'%(yesterday,today,selectedsport),headers=self.headers,verify=False)
                         get_result_responce = r.status_code
                         if get_result_responce == 200:
                             result_dict.update({sports_filterList[selectedsport] : r.text})
@@ -3827,7 +3899,10 @@ class Desktop_Api(Login):
     def get_statement_info(self,statement_remark): 
         statement_remark_dict = {1 : "Betting Statement" ,3 : "Outstanding Bet", 2 : "Cancelled Bet"}
         try:
-            r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/AllStatement',headers=self.headers,verify=False)
+            if 'qasb' in self.url :
+                r = self.client_session.post(self.url.replace("10","11")  + '/Statement/AllStatement',headers=self.headers,verify=False)
+            else:
+                r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/AllStatement',headers=self.headers,verify=False)
             all_statement_text = r.text
             all_statement_list = r.text.split('date-smaller')
             if all_statement_text != None and statement_remark_dict[statement_remark] in all_statement_text:
@@ -3842,7 +3917,10 @@ class Desktop_Api(Login):
             statement_dict = {}
             for date in date_list:
                 try:
-                    r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
+                    if 'qasb' in self.url :
+                        r = self.client_session.post(self.url.replace("10","11")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
+                    else:
+                        r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
                     get_result_responce = r.status_code
                     if get_result_responce == 200:
                         sport_filter_list = re.findall('sporttype=([A-Za-z0-9]+)',r.text) #抓出 Sports filter 的名稱，用於打 API
@@ -3854,7 +3932,10 @@ class Desktop_Api(Login):
                 sport_filter_result_dict = {}
                 for sport_filter in sport_filter_list:
                     try:
-                        r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
+                        if 'qasb' in self.url :
+                            r = self.client_session.post(self.url.replace("10","11")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
+                        else:
+                            r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
                         get_result_responce = r.status_code
                         if get_result_responce == 200:
                             sport_filter_result_dict.update({sport_filter : r.text})

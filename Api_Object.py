@@ -18,9 +18,11 @@ from aiowebsocket.converses import AioWebSocket
 import json
 
 from urllib.parse import urlparse
+import threading
 urllib3.disable_warnings()
 
 logger = create_logger(r"\AutoTest", 'test')
+lock = threading.Lock()
 
 #In[]
 class Login(Common):#取得驗證碼邏輯 
@@ -29,7 +31,9 @@ class Login(Common):#取得驗證碼邏輯
         #logger = create_logger(r"\AutoTest", 'test')
         if device == 'Pc driver':
             self.dr = self.get_driver()
-        self.img_pic = pathlib.Path(__file__).parent.absolute().__str__() + "login_code.jpg"
+        import datetime;
+        ts = datetime.datetime.now().timestamp()
+        self.img_pic = pathlib.Path(__file__).parent.absolute().__str__() + "%s_login_code.jpg"%str(int(ts))
         self.download_waiting_time = 3
         self.url = url
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
@@ -62,6 +66,8 @@ class Login(Common):#取得驗證碼邏輯
 
             if login_rseult is False:
                 return False
+            elif 'Login Too Often' in str(login_rseult):
+                return 'Login Too Often'
 
             return  desktop_api
 
@@ -77,8 +83,11 @@ class Login(Common):#取得驗證碼邏輯
         pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR\\tesseract.exe'
         identify_result = pytesseract.image_to_string(identify_result).strip()
         # 刪除圖片
-        os.remove(self.img_pic)
-        #logger.info('圖片刪除成功')
+        try:
+            os.remove(self.img_pic)
+        except:
+            pass
+        logger.info('圖片刪除成功')
         return identify_result
     
     def convert_img(self,img, threshold):
@@ -2190,7 +2199,7 @@ class Desktop_Api(Login):
             self.client_session = self.session
         else:
             self.client_session = client
-
+        self.relogin = False
     def desktop_login(self,central_account='',central_password=''):# PC端 login街口 邏輯
         '''加密邏輯 呼叫'''
         if self.login_type == 'athena':# athena 的登入 方式 , 會須使用 js 加密
@@ -2238,7 +2247,10 @@ class Desktop_Api(Login):
             logger.info('response: %s'%repspone_json)
             if repspone_json['ShowErrorMsg'] == 'The validation code has expired.' or repspone_json['ErrorCode'] !='':
                 logger.info('登入 Fail')
-                return 'retry'
+                if 'Login Too Often' in str(repspone_json):
+                    return 'Login Too Often'
+                else:
+                    return False
 
             reponse_url = r.json()['url']# 取得登入後 轉導url
             logger.info('reponse_url: %s'%reponse_url)
@@ -2341,7 +2353,35 @@ class Desktop_Api(Login):
             logger.info('post_url: %s'%post_url)
 
             logger.info('header: %s'%self.headers)
-            r = self.client_session.get( post_url,headers=self.headers,verify=False)
+            retry = 0
+            while retry < 10 :
+                r = self.client_session.get( post_url,headers=self.headers,verify=False)
+                if "Authentication has expired" in r.text :
+                    self.relogin = False
+                    lock.acquire()
+                    if self.relogin == True:
+                        retry += 1
+                        continue
+                    logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                    desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
+                    login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                    if login_result == False:
+                        self.log.info("登入失敗，重新登入")
+                        retry += 1
+                        continue
+                    elif 'Login Too Often' in str(login_result):
+                        self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                        time.sleep(60)
+                        retry += 1
+                        continue
+                    else:
+                        pass
+                    self.headers = desktop_api.headers
+                    retry += 1
+                    self.relogin = True
+                    lock.release()
+                else:
+                    break
             try:
                 sucess_data = re.findall("<html.+>",r.text)[0]
                 return r.text
@@ -2350,7 +2390,6 @@ class Desktop_Api(Login):
                 return False
 
     def get_websocket_info(self,sport,market,bet_type='OU',first_get=True,parlay_type = ''):
-        self.sport = sport
         self.bet_type = bet_type
         sports_bettype_dict = {
             'Soccer' : '[1,3,5,7,8,15,301,302,303,304]',
@@ -2390,7 +2429,7 @@ class Desktop_Api(Login):
                             try:
                                 mes = await converse.receive()
                                 rec = mes.decode()
-                                print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
+                                #print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
                                 if '0{"sid' in str(rec):
                                     await converse.send('2')
                                 elif "40" == str(mes.decode()):
@@ -2403,19 +2442,19 @@ class Desktop_Api(Login):
                                         await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"n","condition":{"bettype":[1,12,15,153,2,20,21,3,301,302,303,304,401,402,403,404,5,501,609,610,611,612,615,616,7,701,704,705,706,707,708,709,710,712,713,8,9001,9088,9401,9404,9405,9406,9407,9408,9409,9410,9411,9412,9413,9414,9415,9428,9429,9430,9431,9432,9433,9490,9491,9496,9497,9498,9499,9502,9503,9504,9505,9506,9507,9514,9515,9516,9517,9538,9539,9540,9607,9608,9609,9610,9611,9612,9613,9614,4,30,413,414,405],"parlay":1}}]]]]')
                                     else:
                                         if market != "Outright":
-                                            if self.sport == "Happy 5" or "Number Game" in self.sport: 
-                                                await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":0,"condition":{"sporttype":%s,"marketid":"%s"}}]]]]'%(self.game_mapping(self.sport),str(market[0]).upper()))
-                                            elif self.sport in ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball','Virtual Soccer','Virtual Tennis']:
-                                                await converse.send('42["subscribe",[["odds",[{"id":"c5","rev":"","sorting":0,"condition":{"sporttype":%s}}]]]]'%(self.game_mapping(self.sport)))
+                                            if sport == "Happy 5" or "Number Game" in sport: 
+                                                await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":0,"condition":{"sporttype":%s,"marketid":"%s"}}]]]]'%(self.game_mapping(sport),str(market[0]).upper()))
+                                            elif sport in ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball','Virtual Soccer','Virtual Tennis']:
+                                                await converse.send('42["subscribe",[["odds",[{"id":"c5","rev":"","sorting":0,"condition":{"sporttype":%s}}]]]]'%(self.game_mapping(sport)))
                                             else:
-                                                await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"t","condition":{"sporttype":%s,"marketid":"%s","bettype":%s}}]]]]'%(self.game_mapping(self.sport),str(market[0]).upper(),sports_bettype_dict[self.sport]))
+                                                await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"t","condition":{"sporttype":%s,"marketid":"%s","bettype":%s}}]]]]'%(self.game_mapping(sport),str(market[0]).upper(),sports_bettype_dict[sport]))
                                         elif self.bet_type == 'more':
                                             if market != 'Live':
                                                 await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"n","condition":{"marketid":"D","timestamp":0,"more":1,"matchid":%s}}]]]]'%matchid)
                                             else:
                                                 await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"n","condition":{"marketid":"L","timestamp":0,"more":1,"matchid":%s}}]]]]'%matchid)
                                         else:
-                                            await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"t","condition":{"sporttype":%s,"marketid":"E","bettype":%s}}]]]]'%(self.game_mapping(self.sport),[10]))
+                                            await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"t","condition":{"sporttype":%s,"marketid":"E","bettype":%s}}]]]]'%(self.game_mapping(sport),[10]))
                                 elif 'oddsid' in str(rec) :
                                     if "parlay" in self.bet_type :
                                         if parlay_reget < parlay_reget_int:
@@ -2426,14 +2465,14 @@ class Desktop_Api(Login):
                                         else:
                                             parlay_rec = parlay_rec + str(rec)
                                             rec = parlay_rec
-                                    if "Number Game" in self.sport:
+                                    if "Number Game" in sport:
                                         _rec = rec.split(",{")
                                         for _betting_info in _rec:
                                             num = [_betting_info for _betting_info in _rec if '"m"' in _betting_info ] #因為 Number Game 有三種，所以抓取 League ID 位子，就可以分出 Number Game 各個位子
                                             num_list = []
                                             for _num in num:
                                                 num_list.append(_rec.index(_num))
-                                        if "Turbo" not in self.sport:
+                                        if "Turbo" not in sport:
                                             for count in range(num_list[0],num_list[1]):
                                                 if 'oddsid' in _rec[count]:
                                                     betting_info.append(_rec[count])
@@ -2451,7 +2490,7 @@ class Desktop_Api(Login):
                                                     league_id_dict[re.findall('type":"l","leagueid":([0-9]+),',_betting_info)[0]] = re.findall('"leaguenameen":"(.+?)",',_betting_info)[0]
                                             '''
                                             if sport != 'Cross Sports' :
-                                                test_game_id = self.game_mapping(self.sport)
+                                                test_game_id = self.game_mapping(sport)
                                             have_test_odds = True
                                             for _betting_info in _rec:
                                                 if '"type":"m"' in _betting_info :
@@ -2490,8 +2529,11 @@ class Desktop_Api(Login):
                                                     pass
                                         else:
                                             for _betting_info in _rec:
+                                                if '"type":"m"' in _betting_info :
+                                                    more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
+                                                    more_str = '"morecount":"%s",'%more_count
                                                 if 'oddsid' in _betting_info:
-                                                    betting_info.append(_betting_info)
+                                                    betting_info.append(more_str+_betting_info)
                                     if sport != 'Cross Sports':
                                         return betting_info
                                     else:
@@ -2523,7 +2565,7 @@ class Desktop_Api(Login):
                                     rec = mes.decode()
                                 except:
                                     rec = None
-                                print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
+                                #print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
                                 if '0{"sid' in str(rec):
                                     await converse.send('2')
                                 elif "40" == str(rec):
@@ -2566,13 +2608,13 @@ class Desktop_Api(Login):
                 if betting_info_list != False and 'No Odds' not in betting_info_list and None not in betting_info_list:
                     if sport != 'Cross Sports':
                         for betting_info in betting_info_list:
-                            if "Happy 5" == self.sport or "Number Game" in self.sport or self.sport in ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball','Virtual Soccer','Virtual Tennis']:
+                            if "Happy 5" == sport or "Number Game" in sport or sport in ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball','Virtual Soccer','Virtual Tennis']:
                                 new_dict = {}
-                                if "Happy 5" == self.sport:
+                                if "Happy 5" == sport:
                                     new_dict['MatchId'] = re.findall('"matchid":"H5_(.+?)",',betting_info)[0]
-                                elif "Number Game" in self.sport:
+                                elif "Number Game" in sport:
                                     new_dict['MatchId'] = re.findall('"matchid":"NGL_(.+?)",',betting_info)[0]
-                                elif self.sport in ['Virtual Soccer','Virtual Tennis']:
+                                elif sport in ['Virtual Soccer','Virtual Tennis']:
                                     new_dict['MatchId'] = re.findall('"matchid":(.+?),',betting_info)[0]
                                 else:
                                     new_dict['MatchId'] = re.findall('"matchid":"BVS_(.+?)",',betting_info)[0]
@@ -2586,17 +2628,19 @@ class Desktop_Api(Login):
                                         new_dict['odds_%s'%bet_choice_index] = re.findall('"SelId":"%s","Price":(.+?),'%str(bet_choice),betting_info)[0]
                                     except:
                                         pass
-                                if "Happy 5" == self.sport:
+                                if "Happy 5" == sport:
                                     Match_dict[re.findall('"oddsid":"H5_(.+?)",',betting_info)[0]] = new_dict
-                                elif self.sport in ['Virtual Soccer','Virtual Tennis']:
+                                elif sport in ['Virtual Soccer','Virtual Tennis']:
                                     Match_dict[re.findall('"oddsid":(.+?),',betting_info)[0]] = new_dict
-                                elif "Number Game" in self.sport:
+                                elif "Number Game" in sport:
                                     Match_dict[re.findall('"oddsid":"NGL_(.+?)",',betting_info)[0]] = new_dict
                                 else:
                                     Match_dict[re.findall('"oddsid":"BVS_(.+?)",',betting_info)[0]] = new_dict
                             else:
                                 new_dict = {}
-                                match_list.append(re.findall('"matchid":(.+?),',betting_info)[0]) #先幫 More 抓取所有 Match ID
+                                if "parlay" not in self.bet_type: 
+                                    if int(re.findall('"morecount":"([0-9]+)",',betting_info)[0]) > 2 :
+                                        match_list.append(re.findall('"matchid":(.+?),',betting_info)[0]) #先幫 More 抓取所有 Match ID
                                 if '"bettype":10' in betting_info: #Outright 的
                                     new_dict['MatchId'] = re.findall('"matchid":"o(.+?)",',betting_info)[0]
                                     new_dict['BetTypeId'] = re.findall('"bettype":(.+?),',betting_info)[0]
@@ -2676,7 +2720,7 @@ class Desktop_Api(Login):
                                                     pass
                                     odds_id = re.findall('"oddsid":(.+?),',betting_info)[0].replace('"','').replace('os_','').replace('es_','')
                                     Match_dict[odds_id] = new_dict
-                                self.match_list_dict[sport][market] = match_list
+                        self.match_list_dict[sport][market] = list(set(match_list))
                     else:
                         for sport_filter in betting_info_list.keys():
                             cross_sports_parlay_Match_dict = {}
@@ -2781,13 +2825,14 @@ class Desktop_Api(Login):
             remote = 'ws://{ms2_url}/socket.io/?gid=12345&token={WS_token}&id={WS_id}&rid=1&EIO=3&transport=websocket'.format(ms2_url=ms2_url,WS_token=WS_token,WS_id=WS_id)
             get_Ws_info_result = False
             try:
-                if self.match_list_dict[sport][market] == '0' :
+                if self.match_list_dict[sport][market] == '' :
                     return "No Market"
                 else:
                     match_list = self.match_list_dict[sport][market]
                     match_set = set(match_list)
                     match_list = list(match_set)
                 for matchid in match_list:
+                    logger.info('抓取 %s More Bettype'%matchid  )
                     self.matchid = matchid
                     self.bet_type = 'more'
                     betting_info_list = asyncio.new_event_loop().run_until_complete(startup(remote))
@@ -2913,13 +2958,13 @@ class Desktop_Api(Login):
             #self.stress_dict['response'].append(r.text) 
             return False
 
-    def DoplaceBet(self,Match_dict,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id='',not_bettype_id='',sport_list = ''): #not_bettype_id 是為了不要重複下到同一個 Bettype
+    def DoplaceBet(self,sport,Match_dict,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id='',not_bettype_id='',sport_list = ''): #not_bettype_id 是為了不要重複下到同一個 Bettype
         import random
         from random import shuffle
         '''
         SportName 和 gameid 之後 做動態傳入,目前寫死 
         '''
-        self.BetTypeId_list = []
+        BetTypeId_list = []
         self.Odds_dict = {}# key 為 match id ,value 為 odds
 
         len_Match_dic= len(Match_dict)
@@ -2950,7 +2995,7 @@ class Desktop_Api(Login):
                     shuffle(Match_key_list)
                     for match_key in Match_key_list:
                         if sport == 'Soccer' :
-                            if int(Match_dict[sport][match_key]['BetTypeId']) > 10:
+                            if int(Match_dict[sport][match_key]['BetTypeId']) > 10 or Match_key_list.index(match_key) == len(Match_key_list)-1:
                                 new_Match_dict[match_key] = Match_dict[sport][match_key]
                                 break
                             else:
@@ -2964,12 +3009,12 @@ class Desktop_Api(Login):
             data_str = ""# 需loop 慢慢加起來
             for index_key,Odds_id in enumerate(Match_dict.keys()):#index_key 為 數值 ,一個 match 比賽 , 就是一個key
                 if sport_list != '': #由於 Cross Sports Parlay 的運動會隨機，所以再傳入一個 List
-                    self.sport = sport_list[index_key]
-                    self.gameid = self.game_mapping(self.sport)
+                    sport = sport_list[index_key]
+                    gameid = self.game_mapping(sport)
                 if 'Outright' in str(Match_dict): #outright game_id 為 999，game_type 為平常下注的 sports gameid
-                    self.gameid = 999
+                    gameid = 999
                 else:
-                    self.gameid = self.game_mapping(self.sport)
+                    gameid = self.game_mapping(sport)
                 #logger.info('index_key : %s'%index_key)
                 Match = Match_dict# key 為 Oddsid ,value為 字典,涵蓋 各種 資訊
                 #logger.info('len : %s'%len(Match))
@@ -2978,10 +3023,12 @@ class Desktop_Api(Login):
                 find_bet_type_id = False
                 if self.bet_type != 'more': #more 要排除小於 3 的 Bettype ID
                     from random import shuffle #用來把 list 打亂可以不用一值下同一場比賽
-                    if bettype_id != '' and self.gameid != 999:
+                    if bettype_id != '' and gameid != 999:
                         shuffle(Match_key_list)
                         for Match_key in Match_key_list:
                             if Match[Match_key]['BetTypeId'] == str(bettype_id):
+                                if 'bet_team' not in str(Match[Match_key]):
+                                    continue
                                 Match_key_list = []
                                 Match_key_list.append(Match_key)
                                 find_bet_type_id = True
@@ -2990,10 +3037,12 @@ class Desktop_Api(Login):
                                 pass
                         if find_bet_type_id == False:
                             return "No BetType ID"
-                    elif not_bettype_id != '' and self.gameid != 999 :
+                    elif not_bettype_id != '' and gameid != 999 :
                         shuffle(Match_key_list)
                         for Match_key in Match_key_list:
                             if Match[Match_key]['BetTypeId'] != not_bettype_id:
+                                if 'bet_team' not in str(Match[Match_key]):
+                                    continue
                                 Match_key_list = []
                                 Match_key_list.append(Match_key)
                                 find_bet_type_id = True
@@ -3009,6 +3058,8 @@ class Desktop_Api(Login):
                         else:
                             shuffle(Match_key_list)
                         for Match_key in Match_key_list:
+                            if 'bet_team' not in str(Match[Match_key]):
+                                continue
                             Match_key_list = []
                             Match_key_list.append(Match_key)
                             find_bet_type_id = True
@@ -3022,6 +3073,8 @@ class Desktop_Api(Login):
                     if not_bettype_id != '':
                         for Match_key in Match_key_list:
                             if Match[Match_key]['BetTypeId'] != str(not_bettype_id) and int(Match[Match_key]['BetTypeId']) >= 4:
+                                if 'bet_team' not in str(Match[Match_key]):
+                                    continue
                                 New_Match_key_list.append(Match_key)
                                 find_bet_type_id = True
                                 break
@@ -3034,6 +3087,8 @@ class Desktop_Api(Login):
                     else:
                         for Match_key in Match_key_list:
                             if int(Match[Match_key]['BetTypeId']) >= 4: 
+                                if 'bet_team' not in str(Match[Match_key]):
+                                    continue
                                 New_Match_key_list.append(Match_key)
                                 find_bet_type_id = True
                             else:
@@ -3043,7 +3098,7 @@ class Desktop_Api(Login):
                         else:
                             Match_key_list = New_Match_key_list
                         pass
-                if self.gameid != 999:
+                if gameid != 999:
                     retry_count = 0
                     while True:
                         betting_info = {} #儲存我下注的值 
@@ -3096,23 +3151,21 @@ class Desktop_Api(Login):
                 '''
                 if 'parlay' not in self.bet_type : # single odds 先不轉
                     logger.info('odds: %s'%odds)
-                    #odds = self.Odds_Tran(odds,odds_type=self.odds_type )
-                    #logger.info('odds type: %s , trands odds : %s'%(self.odds_type, odds))
                     pass
                     
                 else:# parlay
-                    if  self.gameid != 50 and self.gameid != 999:# cricket 的不用轉 
+                    if  gameid != 50 and gameid != 999:# cricket 的不用轉 
                         if BetTypeId not in [5, 15]:#  5: Ft 1x2 , 15: 1H 1x2 他們是 屬於Dec Odds
                             odds = self.Odds_Tran(odds,odds_type=self.odds_type)
                             betting_info['odds'] = odds
-                            logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( self.sport,BetTypeId, odds) )
-                if self.gameid != 999 and 'parlay' not in self.bet_type:
+                            logger.info('%s bettype: %s , 需轉乘 Dec odds: %s'%( sport,BetTypeId, odds) )
+                if gameid != 999 and 'parlay' not in self.bet_type:
                     logger.info('BetTypeId : %s'%BetTypeId)
                     try:
                         data_format = "ItemList[{index_key}][Type]={bet_type}&ItemList[{index_key}][Bettype]={BetTypeId}&ItemList[{index_key}][Oddsid]={oddsid}&ItemList[{index_key}][Odds]={odds}&\
                             &ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][Gameid]={gameid}&ItemList[{index_key}][Betteam]={betteam}&ItemList[{index_key}][MMR]=&\
-                            ItemList[{index_key}][SportName]={sportName}&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][sinfo]=\
-                            ".format(index_key= index_key,bet_type = "OU",BetTypeId=BetTypeId, oddsid=oddsid ,odds=odds, Matchid = Matchid ,gameid = self.gameid,betteam = bet_team,sportName=self.sport  )
+                            ItemList[{index_key}][SportName]={sportName}&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][pty]=1&ItemList[{index_key}][sinfo]=\
+                            ".format(index_key= 0,bet_type = "OU",BetTypeId=BetTypeId, oddsid=oddsid ,odds=odds, Matchid = Matchid ,gameid = gameid,betteam = bet_team,sportName=sport  )
                     except Exception as e:
                         logger.error('data_format: %s'%e)
                     data_str = data_str + data_format + '&'
@@ -3122,7 +3175,7 @@ class Desktop_Api(Login):
                         data_format = "ItemList[{index_key}][Type]={bet_type}&ItemList[{index_key}][Bettype]={BetTypeId}&ItemList[{index_key}][Oddsid]={oddsid}&ItemList[{index_key}][Odds]={odds}&\
                             &ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][Gameid]={gameid}&ItemList[{index_key}][Betteam]={betteam}&ItemList[{index_key}][MMR]=&\
                             ItemList[{index_key}][SportName]={sportName}&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][sinfo]=\
-                            ".format(index_key= 0,bet_type = "parlay",BetTypeId=BetTypeId, oddsid=oddsid ,odds=odds, Matchid = Matchid ,gameid = self.gameid,betteam = bet_team,sportName=self.sport  )
+                            ".format(index_key= 0,bet_type = "parlay",BetTypeId=BetTypeId, oddsid=oddsid ,odds=odds, Matchid = Matchid ,gameid = gameid,betteam = bet_team,sportName=sport  )
                     except Exception as e:
                         logger.error('data_format: %s'%e)
                     data_str_dict[index_key] = data_format + '&'
@@ -3132,7 +3185,7 @@ class Desktop_Api(Login):
                         ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][GameName]=&\
                         ItemList[{index_key}][SportName]={sportName}&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][sinfo]=\
                         ".format(index_key= index_key,bet_type = "OT", oddsid=oddsid ,odds=odds, Matchid = Matchid ,
-                            gameid = '999',sportName=self.sport  )
+                            gameid = '999',sportName=sport  )
 
                     data_str = data_str + data_format + '&'
                 '''
@@ -3142,7 +3195,7 @@ class Desktop_Api(Login):
                 if 'parlay' in self.bet_type:
                     betting_info['odds_type'] = "Dec"
                     betting_info['Matchid'] = Matchid
-                    self.BetTypeId_list.append(betting_info)
+                    BetTypeId_list.append(betting_info)
                     retry = 0
                     while retry < 10 :
                         r = self.client_session.post(self.url.replace("www","hm")  + '/BettingParlay/GetParlayTickets'  , data = data_str_dict[index_key].encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
@@ -3150,44 +3203,64 @@ class Desktop_Api(Login):
                             time.sleep(0.5)
                             retry += 1
                         elif "Authentication has expired" in r.text or "Logout" in r.text:
+                            self.relogin = False
+                            lock.acquire()
+                            if self.relogin == True:
+                                retry += 1
+                                continue
+                            print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                            desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            if login_result == False:
+                                self.log.info("登入失敗，重新登入")
+                                retry += 1
+                                continue
+                            elif 'Login Too Often' in str(login_result):
+                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                time.sleep(60)
+                                retry += 1
+                                continue
+                            else:
+                                pass
                             self.headers = desktop_api.headers
+                            retry += 1
+                            self.relogin = True
+                            lock.release()
                         else:
                             break
                     
                     try:
                         logger.info('GetTickets OK')
-                        self.ticket_Data = r.json()['Data']['Tickets']# Data 為一個list. 取出來為一個 dict
+                        ticket_Data = r.json()['Data']['Tickets']# Data 為一個list. 取出來為一個 dict
                         #logger.info('ticket: %s'%Data)
-                        self.min_stake = self.ticket_Data[0]['Minbet']
-                        self.guid = self.ticket_Data[0]['Guid']
-                        self.Line = self.ticket_Data[0]['Line']
-                        betting_info['Line'] = self.Line
-                        for idx,bet_info in enumerate(self.BetTypeId_list):
+                        min_stake = ticket_Data[0]['Minbet']
+                        guid = ticket_Data[0]['Guid']
+                        Line = ticket_Data[0]['Line']
+                        betting_info['Line'] = Line
+                        for idx,bet_info in enumerate(BetTypeId_list):
                             if idx == index_key:
-                                self.BetTypeId_list[idx]['Line'] = self.Line
+                                BetTypeId_list[idx]['Line'] = Line
                                 break
-                        self.Hdp1 = self.ticket_Data[0]['Hdp1']
-                        self.Hdp2 = self.ticket_Data[0]['Hdp2']
-                        betting_info['LeagueName'] = self.ticket_Data[0]['LeagueName']
-                        betting_info['BettypeId'] = self.ticket_Data[0]['Bettype']
-                        betting_info['BettypeName'] = self.ticket_Data[0]['BettypeName']
-                        betting_info['bet_team'] = self.ticket_Data[0]['ChoiceValue']
+                        Hdp1 = ticket_Data[0]['Hdp1']
+                        Hdp2 = ticket_Data[0]['Hdp2']
+                        betting_info['LeagueName'] = ticket_Data[0]['LeagueName']
+                        betting_info['BettypeId'] = ticket_Data[0]['Bettype']
+                        betting_info['BettypeName'] = ticket_Data[0]['BettypeName']
+                        betting_info['bet_team'] = ticket_Data[0]['ChoiceValue']
                         betting_info['oddsid'] = Ran_Match_id
                         try:
-                            self.Hscore = self.ticket_Data[0]['LiveHomeScore']
-                            self.Asocre = self.ticket_Data[0]['LiveAwayScore']
+                            Hscore = ticket_Data[0]['LiveHomeScore']
+                            Asocre = ticket_Data[0]['LiveAwayScore']
                         except:
-                            self.Hscore = '0'
-                            self.Asocre = '0'
-                        parlay_data_format = "ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][Guid]={Guid}&ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][hdp1]={hdp1}&ItemList[{index_key}][hdp2]={hdp2}&ItemList[{index_key}][Hscore]={Hscore}\
-                        &ItemList[{index_key}][Ascore]={Ascore}".format(bet_stake=self.min_stake,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre,index_key= index_key )
+                            Hscore = '0'
+                            Asocre = '0'
+                        parlay_data_format = "ItemList[{index_key}][Guid]={Guid}&ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][hdp1]={hdp1}&ItemList[{index_key}][hdp2]={hdp2}&ItemList[{index_key}][Hscore]={Hscore}\
+                        &ItemList[{index_key}][Ascore]={Ascore}".format(Guid =guid,  Line =Line , hdp1 = Hdp1, hdp2 = Hdp2, Hscore = Hscore ,Ascore = Asocre,index_key= index_key )
                         data_str_dict[index_key] = data_str_dict[index_key] + parlay_data_format + '&'
                     except Exception as e:
                         self.error_msg = r.text
-                        logger.error('Single Bet Get Ticket 有誤 : %s'%self.error_msg)
+                        logger.error('Parlay Bet Get Ticket 有誤 : %s'%self.error_msg)
                         return 'GetTickets False'
                 
                     
@@ -3211,52 +3284,73 @@ class Desktop_Api(Login):
                             time.sleep(3)
                             retry += 1
                         elif "Authentication has expired" in r.text or "Logout" in r.text:
+                            self.relogin = False
+                            lock.acquire()
+                            if self.relogin == True:
+                                retry += 1
+                                continue
+                            print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
-                            desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                            if login_result == False:
+                                self.log.info("登入失敗，重新登入")
+                                retry += 1
+                                continue
+                            elif 'Login Too Often' in str(login_result):
+                                self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                                time.sleep(60)
+                                retry += 1
+                                continue
+                            else:
+                                pass
                             self.headers = desktop_api.headers
+                            retry += 1
+                            self.relogin = True
+                            lock.release()
                             #Login().login_api(device='Pc driver', user=self.user, url=self.url,central_account='web.desktop',central_password='1q2w3e4r')
                         else:
                             break
-                    self.req_list = []# 存放 ticket 和 betting 的 列表
-                    self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
-                    self.req_list.append(self.request_time )
-
 
                     try:
-                        self.order_value = {}
+                        order_value = {}
                         ticket_Data = r.json()['Data'][0]# Data 為一個list. 取出來為一個 dict
                         #logger.info('ticket: %s'%Data)
                         logger.info('GetTickets OK')
-                        self.min_stake = ticket_Data['Minbet']
-                        self.guid = ticket_Data['Guid']
-                        self.Line = ticket_Data['Line']
-                        if self.Line%1 == 0 : 
-                            self.Line = int(self.Line)
-                        betting_info['Line'] = self.Line
-                        self.Hdp1 = ticket_Data['Hdp1']
-                        if self.Hdp1%1 == 0 : 
-                            self.Hdp1 = int(self.Hdp1)
-                        self.Hdp2 = ticket_Data['Hdp2']
-                        if self.Hdp2%1 == 0 : 
-                            self.Hdp2 = int(self.Hdp2)
+                        min_stake = ticket_Data['Minbet']
+                        guid = ticket_Data['Guid']
+                        Line = ticket_Data['Line']
+                        if Line%1 == 0 : 
+                            Line = int(Line)
+                        betting_info['Line'] = Line
+                        Hdp1 = ticket_Data['Hdp1']
+                        if Hdp1%1 == 0 : 
+                            Hdp1 = int(Hdp1)
+                        Hdp2 = ticket_Data['Hdp2']
+                        if Hdp2%1 == 0 : 
+                            Hdp2 = int(Hdp2)
                         try:
-                            self.Hscore = ticket_Data['LiveHomeScore']
-                            self.Asocre = ticket_Data['LiveAwayScore']
+                            Hscore = ticket_Data['LiveHomeScore']
+                            Asocre = ticket_Data['LiveAwayScore']
                         except:
-                            self.Hscore = '0'
-                            self.Asocre = '0'                    
-                        self.ChoiceValue = ticket_Data['ChoiceValue']
-                        self.Home = ticket_Data['HomeName']
-                        self.Away = ticket_Data['AwayName']
+                            Hscore = '0'
+                            Asocre = '0'           
+                        try:
+                            SrcOddsInfo = ticket_Data['SrcOddsInfo']
+                        except:
+                            SrcOddsInfo = ''
+                        ChoiceValue = ticket_Data['ChoiceValue']
+                        Home = ticket_Data['HomeName']
+                        Away = ticket_Data['AwayName']
                         betting_info['LeagueName'] = ticket_Data['LeagueName']
                         betting_info['BettypeId'] = ticket_Data['Bettype']
                         betting_info['BettypeName'] = ticket_Data['BettypeName']
                         betting_info['bet_team'] = ticket_Data['ChoiceValue']
                         betting_info['oddsid'] = Ran_Match_id
+                        
                     except:
-                        self.error_msg = r.text
-                        logger.error('Single Bet Get Ticket 有誤 : %s'%self.error_msg)
+                        error_msg = r.text
+                        logger.error('Single Bet Get Ticket 有誤 : %s'%error_msg)
                         return 'GetTickets False'
                     if index_key == 0:
                         break 
@@ -3272,66 +3366,69 @@ class Desktop_Api(Login):
             data_str = re.sub(r"\s+", "", data_str)# 移除空白,對 打接口沒影響 ,只是 data好看 
 
             #self.headers['Cookie'] = 'ASP.NET_SessionId='+ self.login_session[user]
-            self.post_data =  data_str
+            post_data =  data_str
             
             if 'parlay' in  self.bet_type:
                 if parlay_type == '1' :
-                    combo_str = "ComboLists[0][Type]=0&ComboLists[0][BetCount]=3&ComboLists[0][Stake]=0&ComboLists[1][Type]=1&ComboLists[1][BetCount]=1&ComboLists[1][Stake]=12\
+                    combo_str = "ComboLists[0][Type]=0&ComboLists[0][BetCount]=3&ComboLists[0][Stake]=0&ComboLists[1][Type]=1&ComboLists[1][BetCount]=1&ComboLists[1][Stake]=1\
                         &ComboLists[2][Type]=2&ComboLists[2][BetCount]=4&ComboLists[2][Stake]=0&ComboLists[3][Type]=3&ComboLists[3][BetCount]=7&ComboLists[3][Stake]=0"
                 elif parlay_type == '2' :
                     combo_str = "ComboLists[0][Type]=0&ComboLists[0][BetCount]=3&ComboLists[0][Stake]=0&ComboLists[1][Type]=1&ComboLists[1][BetCount]=1&ComboLists[1][Stake]=0\
-                        &ComboLists[2][Type]=2&ComboLists[2][BetCount]=4&ComboLists[2][Stake]=12&ComboLists[3][Type]=3&ComboLists[3][BetCount]=7&ComboLists[3][Stake]=0"
+                        &ComboLists[2][Type]=2&ComboLists[2][BetCount]=4&ComboLists[2][Stake]=1&ComboLists[3][Type]=3&ComboLists[3][BetCount]=7&ComboLists[3][Stake]=0"
                 elif parlay_type == '3' :
                     combo_str = "ComboLists[0][Type]=0&ComboLists[0][BetCount]=3&ComboLists[0][Stake]=0&ComboLists[1][Type]=1&ComboLists[1][BetCount]=1&ComboLists[1][Stake]=0\
-                        &ComboLists[2][Type]=2&ComboLists[2][BetCount]=4&ComboLists[2][Stake]=0&ComboLists[3][Type]=3&ComboLists[3][BetCount]=7&ComboLists[3][Stake]=12"
+                        &ComboLists[2][Type]=2&ComboLists[2][BetCount]=4&ComboLists[2][Stake]=0&ComboLists[3][Type]=3&ComboLists[3][BetCount]=7&ComboLists[3][Stake]=1"
 
-                self.post_data = data_str_dict[0] + data_str_dict[1].replace('ItemList[0]','ItemList[1]') + data_str_dict[2].replace('ItemList[0]','ItemList[2]') + combo_str
+                post_data = data_str_dict[0] + data_str_dict[1].replace('ItemList[0]','ItemList[1]') + data_str_dict[2].replace('ItemList[0]','ItemList[2]') + combo_str
                 retry = 0
                 while retry < 10 :
-                    r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = self.post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    r = self.client_session.post(self.url.replace("www","hm") + '/BettingParlay/DoplaceBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                     if "please try again" in r.text :
                         time.sleep(0.5)
                         retry += 1
-                    elif "Your session has been terminated" in r.text:
-                        self.mobile_login(user=self.user,central_account='web.desktop',central_password='1q2w3e4r')
+                    elif "Your session has been terminated" in r.text or "Logout" in r.text:
+                        logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                        desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
+                        desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                        self.headers = desktop_api.headers
                     else:
                         break
                 retry = 0
                 while retry < 3: 
-                    betting_response = self.Betting_response(response=r, times=times,betting_info=betting_info)
-                    if betting_response != True and betting_response != False:
+                    betting_response = self.Betting_response(response=r, times=times,betting_info=betting_info,gameid=gameid,BetTypeId_list=BetTypeId_list)
+                    if betting_response != True and betting_response != False and 'TransId_Cash' not in betting_response:
                         if "is closed" in betting_response or "is temporarily closed" in betting_response:
                             retry = 3
                             break
                         elif "Bet Fail" in betting_response:
                             return False
                         elif retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
-                            self.post_data = new_post_data
-                            r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry,betting_info) #現在只為了 Single betting 新增
+                            post_data = new_post_data
+                            r,new_post_data = self.retry_betting(betting_response,post_data,min_stake,retry,betting_info,BetTypeId_list=BetTypeId_list) #現在只為了 Single betting 新增
                         else:
-                            r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry,betting_info) #現在只為了 Single betting 新增
+                            r,new_post_data = self.retry_betting(betting_response,post_data,min_stake,retry,betting_info,BetTypeId_list=BetTypeId_list) #現在只為了 Single betting 新增
                         retry += 1
                     else:
                         break
                 if retry == 3:
-                    self.order_value['LeagueName'] = betting_info['LeagueName']
-                    self.order_value['Message'] = str(betting_response)
-                    self.order_value['MatchID'] = Matchid
-                    self.order_value['oddsid'] = Ran_Match_id
-                    self.order_value['BetTypeId'] = betting_info['BettypeName']
-                    self.order_value['BetChoice'] = betting_info['bet_team'] 
-                    return str(self.order_value)
+                    order_value['LeagueName'] = betting_info['LeagueName']
+                    order_value['Message'] = str(betting_response)
+                    order_value['MatchID'] = Matchid
+                    order_value['oddsid'] = Ran_Match_id
+                    order_value['BetTypeId'] = betting_info['BettypeName']
+                    order_value['BetChoice'] = betting_info['bet_team'] 
+                    return str(order_value)
                 else:
-                    return self.order_value
+                    return betting_response
             else:# single bet
                 # 這裡把 get_ticket拿到的 資訊 , 在加進  post_data
-                self.post_data = data_format+ "&ItemList[0][stake]={bet_stake}&ItemList[0][Guid]={Guid}&ItemList[0][ChoiceValue]={ChoiceValue}&ItemList[0][Home]={Home}&ItemList[0][Away]={Away}&\
-                ItemList[0][Line]={Line}&ItemList[0][Hdp1]={hdp1}&ItemList[0][Hdp2]={hdp2}&ItemList[0][Hscore]={Hscore}&ItemList[0][Ascore]={Ascore}".format(bet_stake=self.min_stake
-                ,Guid =self.guid,ChoiceValue=self.ChoiceValue,Home=self.Home,Away=self.Away,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre)
+                post_data = data_format+ "&ItemList[0][stake]={bet_stake}&ItemList[0][Guid]={Guid}&ItemList[0][ChoiceValue]={ChoiceValue}&ItemList[0][Home]={Home}&ItemList[0][Away]={Away}&\
+                ItemList[0][Line]={Line}&ItemList[0][Hdp1]={hdp1}&ItemList[0][Hdp2]={hdp2}&ItemList[0][Hscore]={Hscore}&ItemList[0][Ascore]={Ascore}&ItemList[0][SrcOddsInfo]={SrcOddsInfo}".format(bet_stake=min_stake
+                ,Guid =guid,ChoiceValue=ChoiceValue,Home=Home,Away=Away,  Line =Line , hdp1 = Hdp1, hdp2 = Hdp2, Hscore = Hscore ,Ascore = Asocre,SrcOddsInfo = SrcOddsInfo)
              
                 retry = 0
                 while retry < 5 :
-                    r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/ProcessBet',data = self.post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
+                    r = self.client_session.post(self.url.replace("www","hm")  + '/Betting/ProcessBet',data = post_data.encode(),headers=self.headers,verify=False)# data_str.encode() 遇到中文編碼問題 姊法
                     if "please try again" in r.text :
                         time.sleep(2)
                         retry += 1
@@ -3343,76 +3440,84 @@ class Desktop_Api(Login):
                     else:
                         break
                 if retry == 5: #在最前面下注就失敗
-                    self.order_value = {}
-                    if self.gameid != 999:
-                        self.order_value['LeagueName'] = betting_info['LeagueName']
+                    order_value = {}
+                    if gameid != 999:
+                        order_value['LeagueName'] = betting_info['LeagueName']
                         try:
-                            self.order_value['Message'] = re.findall('"Message":(.+?)","',r.text)[0]
+                            order_value['Message'] = re.findall('"Message":(.+?)","',r.text)[0]
                         except:
                             repspone_json = r.json()
-                            self.order_value['Message'] = str(repspone_json['ErrorMsg'])
-                        self.order_value['MatchID'] = Matchid
-                        self.order_value['oddsid'] = Ran_Match_id
-                        self.order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
-                        self.order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
-                        return str(self.order_value)
+                            order_value['Message'] = str(repspone_json['ErrorMsg'])
+                        order_value['MatchID'] = Matchid
+                        order_value['oddsid'] = Ran_Match_id
+                        order_value['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
+                        order_value['BetChoice'] = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
+                        return str(order_value)
                     else:
-                        self.order_value['LeagueName'] = betting_info['LeagueName']
+                        order_value['LeagueName'] = betting_info['LeagueName']
                         try:
-                            self.order_value['Message'] = r.text['Message']
+                            order_value['Message'] = r.text['Message']
                         except:
                             repspone_json = r.json()
                             Data = repspone_json['Data']['ItemList'][0]
-                            self.order_value['Message'] = str(Data['Message'])
-                        self.order_value['MatchID'] = Matchid
-                        self.order_value['oddsid'] = Ran_Match_id
-                        self.order_value['BetTypeId'] = betting_info['BettypeName']
-                        self.order_value['BetChoice'] = betting_info['bet_team']
-                        return str(self.order_value)
+                            order_value['Message'] = str(Data['Message'])
+                        order_value['MatchID'] = Matchid
+                        order_value['oddsid'] = Ran_Match_id
+                        order_value['BetTypeId'] = betting_info['BettypeName']
+                        order_value['BetChoice'] = betting_info['bet_team']
+                        return str(order_value)
 
                 retry = 0
                 while retry < 5: 
-                    betting_response = self.Betting_response(response=r, times=times,betting_info=betting_info)
-                    if betting_response != True and betting_response != False:
+                    betting_response = self.Betting_response(response=r, times=times,betting_info=betting_info,gameid=gameid)
+                    if betting_response != True and betting_response != False and 'TransId_Cash' not in betting_response:
                         if "is closed" in betting_response or "System Error" in betting_response or "is temporarily closed" in betting_response:
                             retry = 5
                             break
                         elif retry >= 1: #如果 >1 代表以重做過一次還是錯，那就要用新的 Data 取代舊的
-                            self.post_data = new_post_data
-                            r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry,betting_info) #現在只為了 Single betting 新增
+                            post_data = new_post_data
+                            r,new_post_data = self.retry_betting(betting_response,post_data,min_stake,retry,betting_info) #現在只為了 Single betting 新增
                         else:
-                            r,new_post_data = self.retry_betting(betting_response,self.post_data,self.min_stake,retry,betting_info) #現在只為了 Single betting 新增
+                            r,new_post_data = self.retry_betting(betting_response,post_data,min_stake,retry,betting_info) #現在只為了 Single betting 新增
                         retry += 1
                     else:
                         break
                 if retry == 5:
-                    if self.gameid != 999:
-                        self.order_value['LeagueName'] = betting_info['LeagueName']
-                        self.order_value['Message'] = str(betting_response)
-                        self.order_value['MatchID'] = Matchid
-                        self.order_value['oddsid'] = Ran_Match_id
-                        self.order_value['BetTypeId'] = betting_info['BettypeName']
-                        self.order_value['BetChoice'] = betting_info['bet_team'] 
+                    if gameid != 999:
+                        order_value['LeagueName'] = betting_info['LeagueName']
+                        order_value['Message'] = str(betting_response)
+                        order_value['MatchID'] = Matchid
+                        order_value['oddsid'] = Ran_Match_id
+                        order_value['BetTypeId'] = betting_info['BettypeName']
+                        order_value['BetChoice'] = betting_info['bet_team'] 
                     else:
-                        self.order_value['LeagueName'] = betting_info['LeagueName']
-                        self.order_value['Message'] = str(betting_response)
-                        self.order_value['MatchID'] = Matchid
-                        self.order_value['oddsid'] = Ran_Match_id
-                        self.order_value['BetTypeId'] = 'Outright'
-                    return str(self.order_value)
+                        order_value['LeagueName'] = betting_info['LeagueName']
+                        order_value['Message'] = str(betting_response)
+                        order_value['MatchID'] = Matchid
+                        order_value['oddsid'] = Ran_Match_id
+                        order_value['BetTypeId'] = 'Outright'
+                    return str(order_value)
                 else:
-                    return str(self.order_value)
+                    return str(betting_response)
                 
 
         except Exception as e:
+            import sys
+            import traceback
+            error_class = e.__class__.__name__ #取得錯誤類型
+            detail = e.args[0] #取得詳細內容
+            cl, exc, tb = sys.exc_info()
+            lastCallStack = traceback.extract_tb(tb)[-1] #取得Call Stack的最後一筆資料
+            fileName = lastCallStack[0] #取得發生的檔案名稱
+            lineNum = lastCallStack[1]
             logger.info('Desktop DoplaceBet Api Fail: %s'%e)
             return False
 
-    def Betting_response(self,response,times,BetTypeId='',betting_info=''):# 針對 投注 回復 做解析
+    def Betting_response(self,response,times,BetTypeId_list='',betting_info='',gameid=''):# 針對 投注 回復 做解析
         try:
             repspone_json = response.json()
         except:
-            self.error_msg = response.text
+            error_msg = response.text
             return False
 
         if 'parlay'  in self.bet_type:
@@ -3449,35 +3554,35 @@ class Desktop_Api(Login):
                 
                 
             elif response_code in ['0','1']:# 投注成功
-                self.order_value = {}
-                self.order_value['Message'] = Message
+                order_value = {}
+                order_value['Message'] = Message
                 
                 TransId_Combo = Data['TransId_Combo']
                 TransId_System = Data['TransId_System']
                 TransId_Lucky = Data['TransId_Lucky']
 
                 TotalPerBet =  Data['TotalPerBet']
-                self.order_value['TotalPerBet'] = TotalPerBet
+                order_value['TotalPerBet'] = TotalPerBet
                 FinalBalance = Data['FinalBalance']
-                self.order_value['FinalBalance'] = FinalBalance
+                order_value['FinalBalance'] = FinalBalance
                 
                 if TransId_Combo in ['0','']:
                     if TransId_System in ['0','']:
-                        self.order_value['TransId_Cash'] = TransId_Lucky
-                        for idx,bet_info in enumerate(self.BetTypeId_list):
+                        order_value['TransId_Cash'] = TransId_Lucky
+                        for idx,bet_info in enumerate(BetTypeId_list):
                             for _dict in Data['ItemList']:
-                                self.BetTypeId_list[idx]['TransId'] = _dict['TransId']
+                                BetTypeId_list[idx]['TransId'] = _dict['TransId']
                                 break
                     else:
-                        self.order_value['TransId_Cash'] = TransId_System
+                        order_value['TransId_Cash'] = TransId_System
 
                 else:
-                    self.order_value['TransId_Cash'] = TransId_Combo
+                    order_value['TransId_Cash'] = TransId_Combo
 
-                self.order_value['BetTypeId_list'] = self.BetTypeId_list
+                order_value['BetTypeId_list'] = BetTypeId_list
 
-                logger.info('order_value: %s'%self.order_value)
-                return True
+                logger.info('order_value: %s'%order_value)
+                return order_value
             
             else:#例外 沒抓到的 code
                 logger.info('response_code : %s'%response_code)
@@ -3487,12 +3592,12 @@ class Desktop_Api(Login):
             '''
             #  ItemList 為一個 list ,裡面 放各資訊 字典 
             '''
-            self.order_value = {}
+            order_value = {}
             try:
                 Itemdict = repspone_json['Data']['ItemList'][0]# Itemdict 為一個字典
                 logger.info('betting response Error Code: %s'%repspone_json['Data']['Common']['ErrorCode'])
 
-                self.order_value['TransId_Cash'] = Itemdict['TransId_Cash']
+                order_value['TransId_Cash'] = Itemdict['TransId_Cash']
                 #self.order_value['Message'] = Itemdict['Message']
                 logger.info('betting response message: %s'%Itemdict['Message'])
                 error_message = Itemdict['Message']
@@ -3509,39 +3614,39 @@ class Desktop_Api(Login):
             try:
                 #order_value['DisplayOdds'] = Itemdict['DisplayOdds']
                 #BetRecommends = Itemdict['BetRecommends'][0]# 為一個 list ,裡面含 各個 bet type資訊，這個不是此注單的資訊，而且下方建議投注的資訊
-                self.order_value['oddsid'] = betting_info['oddsid']
-                pair_odds = ['1', '2', '3', '7', '8', '12', '17', '18', '20', '21', '81', '82', '83', '84', '85', '86', '87', '88', '91', '183', '184', '194', '203', '123', '153', '154', '155', '156', '228', '229', '381', '382', '386', '387', '388', '389', '390', '393', '394', '400', '401', '402', '403', '404', '428', '470', '471', '472', '479', '481', '488', '489', '490', '491', '492', '603', '604', '605', '606', '607', '609', '610', '611', '612', '613', '615', '616', '617', '701', '702', '704', '705', '706', '707', '708', '709', '710', '712', '713', '714', '8101', '8102', '8104', '9001', '9002', '9003', '9004', '9005', '9006', '9007', '9008', '9009', '9010', '9011', '9012', '9013', '9014', '9015', '9016', '9017', '9018', '9019', '9020', '9021', '9022', '9023', '9024', '9025', '9026', '9027', '9028', '9029', '9030', '9031', '9032', '9033', '9034', '9035', '9036', '9037', '9038', '9039', '9040', '9041', '9042', '9043', '9044', '9045', '9046', '9047', '9048', '9049', '9050', '9051', '9052', '9053', '9054', '9055', '9056', '9057', '9058', '9059', '9060', '9061', '9062', '9063', '9064', '9065', '9066', '9067', '9077', '9068', '9069', '9070', '9071', '9072', '9073', '9074', '9075', '9076', '9078', '9079', '9080', '9081', '9082', '9083', '9084', '9085', '9086', '9087']
-                if self.gameid != 999:
+                order_value['oddsid'] = betting_info['oddsid']
+                pair_odds = ['1', '2', '3', '7', '8', '12', '17', '18', '20', '21', '81', '82', '83', '84', '85', '86', '87', '88', '91', '183', '184', '194', '203', '123', '153', '154', '155', '156', '228', '229', '381', '382', '386', '387', '388', '389', '390', '393', '394', '400', '401', '402', '403', '404', '428', '470', '471', '472', '479', '481', '488', '489', '490', '491', '492', '603', '604', '605', '606', '607', '609', '610', '611', '612', '613', '615', '616', '617', '701', '702', '704', '705', '706', '707', '708', '709', '710', '712', '713', '714', '8101', '8102', '8104', '9001', '9002', '9003', '9004', '9005', '9006', '9007', '9008', '9009', '9010', '9011', '9012', '9013', '9014', '9015', '9016', '9017', '9018', '9019', '9020', '9021', '9022', '9023', '9024', '9025', '9026', '9027', '9028', '9029', '9030', '9031', '9032', '9033', '9034', '9035', '9036', '9037', '9038', '9039', '9040', '9041', '9042', '9043', '9044', '9045', '9046', '9047', '9048', '9049', '9050', '9051', '9052', '9053', '9054', '9055', '9056', '9057', '9058', '9059', '9060', '9061', '9062', '9063', '9064', '9065', '9066', '9067', '9077', '9068', '9069', '9070', '9071', '9072', '9073', '9074', '9075', '9076', '9078', '9079', '9080', '9081', '9082', '9083', '9084', '9085', '9086', '9087','9089','9090','9091','9092','9093','9094','9095','9096','9097','9098','9099','9100','9101','9102','9103','9104','9105','9106','9107','9108','9109','9110','9111','9112','9113','9114','9115','9116','9117','9118','9119','9120','9121','9122','9123','9124','9125','9126','9127','9128','9129','9130','9131','9132','9133','9134','9135','9136','9137','9138','9139','9140','9141','9142']
+                if gameid != 999:
                     if betting_info['BettypeId'] in pair_odds :
-                        self.order_value['odds_type'] = self.odds_type
+                        order_value['odds_type'] = self.odds_type
                     else:
-                        self.order_value['odds_type'] = "Dec"
+                        order_value['odds_type'] = "Dec"
                     try: #給 DoplaceBet 使用的
-                        self.order_value['Line'] = betting_info['Line']
+                        order_value['Line'] = betting_info['Line']
                     except:
                         pass
-                    self.order_value['LeagueName'] = betting_info['LeagueName']
-                    self.order_value['BettypeName'] = betting_info['BettypeName']
-                    self.order_value['BetTypeId'] = betting_info['BettypeId']
-                    self.order_value['BetChoice'] = betting_info['bet_team'] 
-                    self.order_value['Odds'] = str(betting_info['odds'])
+                    order_value['LeagueName'] = betting_info['LeagueName']
+                    order_value['BettypeName'] = betting_info['BettypeName']
+                    order_value['BetTypeId'] = betting_info['BettypeId']
+                    order_value['BetChoice'] = betting_info['bet_team'] 
+                    order_value['Odds'] = str(betting_info['odds'])
                 else:
-                    self.order_value['odds_type'] = "Dec"
-                    self.order_value['Line'] = self.Line
-                    self.order_value['LeagueName'] = betting_info['LeagueName']
-                    self.order_value['BettypeName'] = 'Outright'
-                    self.order_value['Odds'] = str(betting_info['odds'])
+                    order_value['odds_type'] = "Dec"
+                    order_value['Line'] = betting_info['Line']
+                    order_value['LeagueName'] = betting_info['LeagueName']
+                    order_value['BettypeName'] = 'Outright'
+                    order_value['Odds'] = str(betting_info['odds'])
 
-                logger.info('order_value : %s'%self.order_value)
+                logger.info('order_value : %s'%order_value)
                 #方便查看資料的
                 pass_txt = open('Config/pass.txt', 'a+')
-                pass_txt.write(str(self.order_value)+'\n')
+                pass_txt.write(str(order_value)+'\n')
                 pass_txt.close()
-                return True
+                return order_value
             except:
                 return False
 
-    def retry_betting(self,error_code,post_data,bet_stake,retry,betting_info):
+    def retry_betting(self,error_code,post_data,bet_stake,retry,betting_info,BetTypeId_list=''):
         if "Odds has changed" in str(error_code):
             if "parlay" in self.bet_type:
                 error_code_dict = error_code
@@ -3553,9 +3658,9 @@ class Desktop_Api(Login):
                         old_odds = old_odds.rstrip('0')
                     if abs(float(new_odds)) < 100 and '.0' in old_odds:
                         new_odds = new_odds.rstrip('0')
-                    for idx,betslip in enumerate(self.BetTypeId_list):
+                    for idx,betslip in enumerate(BetTypeId_list):
                         if str(error_key) in str(betslip):
-                            self.BetTypeId_list[idx]['odds'] = new_odds
+                            BetTypeId_list[idx]['odds'] = new_odds
                             post_data = re.sub("ItemList\["+str(idx)+"\]\[Odds\]=(.*?)&I", "ItemList["+str(idx)+"][Odds]="+str(new_odds)+"&I",post_data)
                             pass
                     '''   
@@ -3584,7 +3689,7 @@ class Desktop_Api(Login):
                 new_bet_stake = bet_stake + 10
             else:
                 new_bet_stake = bet_stake + 4
-            self.bet_stake = new_bet_stake
+            bet_stake = new_bet_stake
             post_data = post_data.replace('[stake]=%s'%bet_stake,'[stake]=%s'%new_bet_stake)
         elif "HDP/OU has been changed." in error_code:
             pass
@@ -3622,6 +3727,30 @@ class Desktop_Api(Login):
                 #for responce in bets_list:
                 #    if transid in responce:
                 #        return responce
+            elif "Authentication has expired" in r.text :
+                self.relogin = False
+                lock.acquire()
+                if self.relogin == True:
+                    retry += 1
+                    continue
+                logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
+                login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                if login_result == False:
+                    self.log.info("登入失敗，重新登入")
+                    retry += 1
+                    continue
+                elif 'Login Too Often' in str(login_result):
+                    self.log.info("Login Too Often，等待 60 秒後再重新登入")
+                    time.sleep(60)
+                    retry += 1
+                    continue
+                else:
+                    pass
+                self.headers = desktop_api.headers
+                retry += 1
+                self.relogin = True
+                lock.release()
             else:
                 time.sleep(1)
                 reget += 1

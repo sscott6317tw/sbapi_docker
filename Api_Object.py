@@ -1061,8 +1061,11 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     #logger.info('dict: %s'%dict_)
                     new_dict = {}
                     if self.gameid != 999:
-                        if 'hdp2' in str(dict_) : #給 Match Handicap & Total 帶入的值
-                            new_dict['hdp2'] = dict_['hdp2']
+                        try:
+                            if 'hdp2' in str(dict_) : #給 Match Handicap & Total 帶入的值
+                                new_dict['hdp2'] = dict_['hdp2']
+                        except:
+                            pass
                         MarketId = dict_['MarketId']
                         new_dict['MatchId'] = dict_['MatchId']
                         new_dict['BetTypeId'] = dict_['BetTypeId']

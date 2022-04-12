@@ -118,9 +118,13 @@ class Common:
                 taglist = html.find_all('tr')
                 for trtag in taglist:  
                     tdlist = trtag.find_all('td')
-        
-                    if 'IP' in  tdlist[0].text:
-                        return(tdlist[1].text)
+                    try:
+                        if 'IP' in  tdlist[0].text:
+                            return(tdlist[1].text)
+                    except:
+                        import re
+                        whoamiIP = re.findall('([0-9]+.[0-9]+.[0-9]+.[0-9]+)',str(html))[0]
+                        return whoamiIP
                 
         except Exception as e:
             log.error('%s 有誤 :%s'%(self.url, e))
@@ -241,7 +245,6 @@ class Env:
         'ABcasino': 'http://g110mb.258088.net/apilogin'
         
           },
-        
         
         'desktop': {'W88' : 'https://alicantemkt.w2sports.com/onelogin.aspx'}
         }

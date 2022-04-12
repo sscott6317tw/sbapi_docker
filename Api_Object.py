@@ -1789,6 +1789,12 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     
                     logger.info('Ran_Match_id: %s'%Ran_Match_id)
                     BetTypeId = Match[Ran_Match_id]['BetTypeId']
+                    '''
+                    if BetTypeId != 9486:
+                        continue
+                    else:
+                        pass
+                    '''
                     self.betting_info['BetTypeId'] = Match[Ran_Match_id]['BetTypeId']
                     self.betting_info['MatchId'] = Match[Ran_Match_id]['MatchId']
                     self.betting_info['Team1'] = Match[Ran_Match_id]['Team1']
@@ -1878,7 +1884,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             else:
                                 if ("H1" in self.betting_info['bet_team'] and "-" not in self.betting_info['bet_team']) or "O1" in self.betting_info['bet_team']:
                                     self.betting_info['bet_team'] = self.betting_info['bet_team'].replace("1","")
-                                elif self.betting_info['BetTypeId'] == 9484 or self.betting_info['BetTypeId'] == 9485:
+                                elif '948' in str(self.betting_info['BetTypeId']):
                                     if '<' in self.betting_info['bet_team']:
                                         self.betting_info['bet_team'] = '0'
                                     elif '>' in self.betting_info['bet_team']:
@@ -2370,7 +2376,7 @@ class Desktop_Api(Login):
             self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
             '''
             if 'qasb' in self.url :
-                self.hm_url = self.member_url.replace("10","11") 
+                self.hm_url = self.url.replace("10","11") 
             else:
                 self.hm_url = self.member_url.replace('member','hm')
 
@@ -2401,6 +2407,7 @@ class Desktop_Api(Login):
                         continue
                     else:
                         pass
+                    self.headers = desktop_api.url
                     self.headers = desktop_api.headers
                     retry += 1
                     self.relogin = True
@@ -3260,6 +3267,7 @@ class Desktop_Api(Login):
                                 continue
                             else:
                                 pass
+                            self.headers = desktop_api.url
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
@@ -3343,6 +3351,7 @@ class Desktop_Api(Login):
                                 continue
                             else:
                                 pass
+                            self.headers = desktop_api.url
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
@@ -3432,6 +3441,7 @@ class Desktop_Api(Login):
                         logger.info('Your session has been terminated，等待 30 秒後重新登入')
                         desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                         desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                        self.headers = desktop_api.url
                         self.headers = desktop_api.headers
                     else:
                         break
@@ -3481,6 +3491,7 @@ class Desktop_Api(Login):
                         logger.info('Your session has been terminated，等待 30 秒後重新登入')
                         desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                         desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
+                        self.headers = desktop_api.url
                         self.headers = desktop_api.headers
                     else:
                         break
@@ -3806,6 +3817,7 @@ class Desktop_Api(Login):
                     continue
                 else:
                     pass
+                self.headers = desktop_api.url
                 self.headers = desktop_api.headers
                 retry += 1
                 self.relogin = True

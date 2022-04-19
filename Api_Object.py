@@ -23,7 +23,6 @@ import threading
 urllib3.disable_warnings()
 
 logger = create_logger(r"\AutoTest", 'test')
-lock = threading.Lock()
 
 #In[]
 class Login(Common):#取得驗證碼邏輯 
@@ -38,7 +37,8 @@ class Login(Common):#取得驗證碼邏輯
         self.download_waiting_time = 3
         self.url = url
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
-    
+        get_chrome_info = Common(sec_times='',stop_times='')
+        self.chrome_version = get_chrome_info.get_Chrome_version(split=False)
     
     def login_api(self, device,user,password =  '1q2w3e4r',url='',client='',central_account='',central_password='',
             site='', queue= ''):
@@ -105,33 +105,26 @@ class Login(Common):#取得驗證碼邏輯
     def assert_validation(self):# 驗證碼的流程, 寫成function, 如果有解析失敗,好retry
         
         while True:
-            now = int(time.time()*1000)
-            #先提取 Url 確認是否有 Session
-            if 'xideqs' in self.url or '43100' in self.url:# qasb 測試環境 url輸入後 取得當前 xideqseTWIN 的url
-                self.dr.get(self.url)
-                #r = self.session.get(self.url  ,headers=self.headers,verify=False)
-                current_url = self.dr.current_url
-                #current_url = r.url# 取得轉換後的測試url ex: http://qasb.athena000.com:104/(S(xideqseTWIN-Avzh25wrew0zndzoe3tmqiamhf2X-MXwjdkH3qs47fawD1gZZ))/
-                self.url = current_url.split('?')[0]#?scmt=tab01&ssmt=tab01 移除
-                logger.info('轉換url : %s'%self.url )
-                if "/NewIndex" in self.url:
-                    self.url = self.url.replace("/NewIndex",'')
-                login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
-                self.dr.get(login_code_url)
-                print(self.dr.current_url)
-            else:#Production athena000
-                if "/NewIndex" in self.url:
-                    self.url = self.url.replace("/NewIndex",'')
-                login_code_url = '%s/login_code.aspx?%s'%(self.url,now)
-                logger.info('login_code_url: %s'%login_code_url)
-                self.dr.get(login_code_url)
+
+            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/%s Safari/537.36'%self.chrome_version
             
+            r = self.client_session.get(self.url  ,headers= self.headers,verify=False)# 需先拿 session url
+            logger.info('url : %s'%r.url  )
+
+            self.url = r.url
+            now = int(time.time()*1000)
+            login_code_url = '%s/login_code.aspx?%s'%(self.url , now)
+            logger.info('login_code_url: %s'%login_code_url)
+ 
+            self.dr.get(login_code_url)
+
+            self.img_pic = './login_code.jpg' 
             self.dr.get_screenshot_as_file(self.img_pic)
             for i in range(self.download_waiting_time):
                 if os.path.isfile(self.img_pic):
                     logger.info('圖片有找到')
                     break
-                else:
+                else: 
                     logger.info('圖片未找到')
                     time.sleep(1)
                     if i == self.download_waiting_time - 1:
@@ -141,26 +134,15 @@ class Login(Common):#取得驗證碼邏輯
             
             if validate_result.isdigit() is False:# 檢查取得的驗證碼是否都是數值,如果有字母 馬上retry
                 logger.info('有英文字 %s,直接retry'%validate_result)
-                if 'xideqs' in self.url:
-                    self.url = self.url.split('(S')[0] +'NewIndex'
             elif len(validate_result) < 4:#長度小於4也要retry
                 logger.info('長度小於4 %s,直接retry'%validate_result)
             else:
                 logger.info('validate_result: %s'%validate_result)
-                '''
-                if 'qasb' in self.url:
-                    break
-                '''
-                if 'xideqs' in self.url:
-                    r = self.session.get(self.url+'/NewIndex/GetLabel'  ,headers=self.headers,verify=False)
-                    self.cookies =  r.cookies
-                    #self.dr.close()
-                    break
-                else:
-                    self.cookies = self.dr.get_cookies()
-                    logger.info('cookies: %s'%self.cookies )
-                    self.dr.close()
-                    break
+               
+                self.cookies = self.dr.get_cookies()
+                #logger.info('cookies: %s'%self.cookies )
+                #self.dr.close()
+                break
         return validate_result
 
     def js_from_file(self,file_name):# 讀取js 加密邏輯  CFS
@@ -2228,6 +2210,7 @@ class Desktop_Api(Login):
         else:
             self.client_session = client
         self.relogin = False
+
     def desktop_login(self,central_account='',central_password=''):# PC端 login街口 邏輯
         '''加密邏輯 呼叫'''
         if self.login_type == 'athena':# athena 的登入 方式 , 會須使用 js 加密
@@ -2279,8 +2262,8 @@ class Desktop_Api(Login):
             reponse_url = r.json()['url']# 取得登入後 轉導url
             logger.info('reponse_url: %s'%reponse_url)
         
-            if len(self.cookies) == 0:# 有sesion 的判斷
-                Val_url = '%s'%( reponse_url)
+            if 'qasb' in self.url or 'xide' in self.url:# 有sesion 的判斷
+                Val_url = '%s/%s'%(self.url ,  reponse_url)
                 logger.info('Val_url: %s'%Val_url)#/ValidateTicket?Guid=fa426c9c-739d-4b37-9589-db13ab0b1cdd
                 r = self.client_session.get(Val_url,headers=self.headers,verify=False)
                 logger.info('r.url: %s'%r.url)
@@ -2289,16 +2272,12 @@ class Desktop_Api(Login):
                 self.member_url = self.member_url.split('/ValidateTicket')[0]
                 logger.info('self.member_url: %s'%self.member_url)
 
-                r = self.client_session.get(self.member_url +  '/NewIndex?lang=en&rt=0&webskintype=2',headers=self.headers,verify=False)
+                r = self.client_session.get(self.member_url +  '/NewIndex?lang=en&rt=0&webskintype=3',headers=self.headers,verify=False)
                 
             else:
-                if 'qasb' in self.url:
-                    reponse_url = self.url + reponse_url
-                    self.member_url = self.url
-                else:
-                    u = urlparse(reponse_url)# 擷取 動態 member_url 
-                    self.member_url = 'http://%s'%u.netloc
-                    logger.info('member_url: %s'% self.member_url)
+                u = urlparse(reponse_url)# 擷取 動態 member_url 
+                self.member_url = 'http://%s'%u.netloc
+                logger.info('member_url: %s'% self.member_url)
 
                 r = self.client_session.get(reponse_url,headers=self.headers,verify=False)
             self.login = 'login ready'
@@ -2308,12 +2287,19 @@ class Desktop_Api(Login):
             logger.info('post_url: %s'%post_url)
             open_sports = self.session.get("%s/EntryIndex/OpenSports"%self.member_url,headers = self.headers)
             cookie_session = self.session.cookies.get_dict()
+            if '.ASPXAUTH' in str(cookie_session):
+                self.url = self.url.split('/(S')[0] + '/('+re.findall("\((S.+)\)\)",open_sports.url)[0] + '))'
+                aspxauth = cookie_session['.ASPXAUTH']
+                logger.info('aspxauth: %s'%aspxauth)
 
-            NET_SessionId = cookie_session['ASP.NET_SessionId']
-            logger.info('NET_SessionId: %s'%NET_SessionId)
+                self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
+                self.headers['Cookie'] = ".ASPXAUTH=" + aspxauth
+            else:
+                NET_SessionId = cookie_session['ASP.NET_SessionId']
+                logger.info('NET_SessionId: %s'%NET_SessionId)
 
-            self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
-            self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
+                self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
+                self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
 
 
             return True
@@ -2375,25 +2361,26 @@ class Desktop_Api(Login):
             self.headers['Accept'] =  'application/json, text/javascript, */*; q=0.01'
             self.headers['Cookie'] = "ASP.NET_SessionId=" + NET_SessionId
             '''
-            if 'qasb' in self.url :
-                self.hm_url = self.url.replace("10","11") 
-            else:
-                self.hm_url = self.member_url.replace('member','hm')
-
-            post_url = self.hm_url  + '/Sports/'
-            logger.info('post_url: %s'%post_url)
-
-            logger.info('header: %s'%self.headers)
             retry = 0
             while retry < 10 :
+                if 'qasb' in self.url :
+                    self.hm_url = self.url.replace("10","11") 
+                else:
+                    self.hm_url = self.member_url.replace('member','hm')
+
+                post_url = self.hm_url  + '/Sports/'
+                logger.info('post_url: %s'%post_url)
+
+                logger.info('header: %s'%self.headers)
                 r = self.client_session.get( post_url,headers=self.headers,verify=False)
                 if "Authentication has expired" in r.text :
                     self.relogin = False
-                    lock.acquire()
                     if self.relogin == True:
                         retry += 1
                         continue
                     logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                    if '/(S' in self.url:
+                        self.url = self.url.split('/(S')[0]
                     desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                     login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                     if login_result == False:
@@ -2401,17 +2388,16 @@ class Desktop_Api(Login):
                         retry += 1
                         continue
                     elif 'Login Too Often' in str(login_result):
-                        logger.info("Login Too Often，等待 60 秒後再重新登入")
-                        time.sleep(60)
+                        logger.info("Login Too Often，等待 30 秒後再重新登入")
+                        time.sleep(30)
                         retry += 1
                         continue
                     else:
                         pass
-                    self.headers = desktop_api.url
+                    self.url = desktop_api.url
                     self.headers = desktop_api.headers
                     retry += 1
                     self.relogin = True
-                    lock.release()
                 else:
                     break
             try:
@@ -2565,11 +2551,19 @@ class Desktop_Api(Login):
                                         else:
                                             for _betting_info in _rec:
                                                 try:
-                                                    if '"type":"m"' in _betting_info :
-                                                        more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
-                                                        more_str = '"morecount":"%s",'%more_count
-                                                    if 'oddsid' in _betting_info:
-                                                        betting_info.append(more_str+_betting_info)
+                                                    if market != "Outright":
+                                                        if '"type":"m"' in _betting_info :
+                                                            if '"istest":1,' not in _betting_info:
+                                                                more_count = re.findall('"mc":([0-9]+),',_betting_info)[0]
+                                                                more_str = '"morecount":"%s",'%more_count
+                                                                have_test_odds = False
+                                                            else:
+                                                                have_test_odds = True
+                                                        if 'oddsid' in _betting_info and have_test_odds == False:
+                                                            betting_info.append(more_str+_betting_info)
+                                                    else:
+                                                        if 'oddsid' in _betting_info:
+                                                            betting_info.append(_betting_info)
                                                 except:
                                                     pass
                                     if sport != 'Cross Sports':
@@ -2676,7 +2670,7 @@ class Desktop_Api(Login):
                                     Match_dict[re.findall('"oddsid":"BVS_(.+?)",',betting_info)[0]] = new_dict
                             else:
                                 new_dict = {}
-                                if "parlay" not in self.bet_type: 
+                                if "parlay" not in self.bet_type and '"bettype":10' not in betting_info: 
                                     if int(re.findall('"morecount":"([0-9]+)",',betting_info)[0]) > 2 :
                                         match_list.append(re.findall('"matchid":(.+?),',betting_info)[0]) #先幫 More 抓取所有 Match ID
                                 if '"bettype":10' in betting_info: #Outright 的
@@ -2865,6 +2859,8 @@ class Desktop_Api(Login):
             try:
                 if self.match_list_dict[sport][market] == '' :
                     return "No Market"
+                elif len(self.match_list_dict[sport][market]) == 0 :
+                    return "No More Bettype"
                 else:
                     match_list = self.match_list_dict[sport][market]
                     match_set = set(match_list)
@@ -3016,6 +3012,7 @@ class Desktop_Api(Login):
                 data_str_dict = {}
                 #抓取兩個一般 Bettype 一個 More Bettype
                 new_Match_dict = {} 
+                old_Match_dict = Match_dict
                 Match_key_list = list(Match_dict.keys())
                 shuffle(Match_key_list)
                 for match_key in Match_key_list:
@@ -3031,6 +3028,7 @@ class Desktop_Api(Login):
                 data_str_dict = {}
                 #抓取兩個一般 Bettype 一個 More Bettype
                 new_Match_dict = {} 
+                old_Match_dict = Match_dict
                 for sport in sport_list:
                     Match_key_list = list(Match_dict[sport].keys())
                     shuffle(Match_key_list)
@@ -3167,7 +3165,6 @@ class Desktop_Api(Login):
 
                     try:# 有些 bettype 下 會有超過 2的長度, 如果 傳2 以上會爆錯, 就統一用 0來代替
                         bet_team = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
-                        bet_team = Match[Ran_Match_id]['bet_team_%s'%bet_team_index]
                         betting_info['bet_team'] = bet_team
                     except:
                         bet_team = Match[Ran_Match_id]['bet_team_0']
@@ -3248,12 +3245,13 @@ class Desktop_Api(Login):
                             retry += 1
                         elif "Authentication has expired" in r.text or "Logout" in r.text:
                             self.relogin = False
-                            lock.acquire()
                             if self.relogin == True:
                                 retry += 1
                                 continue
                             print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                            if '/(S' in self.url:
+                                self.url = self.url.split('/(S')[0]
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                             login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                             if login_result == False:
@@ -3261,17 +3259,16 @@ class Desktop_Api(Login):
                                 retry += 1
                                 continue
                             elif 'Login Too Often' in str(login_result):
-                                logger.info("Login Too Often，等待 60 秒後再重新登入")
-                                time.sleep(60)
+                                logger.info("Login Too Often，等待 30 秒後再重新登入")
+                                time.sleep(30)
                                 retry += 1
                                 continue
                             else:
                                 pass
-                            self.headers = desktop_api.url
+                            self.url = desktop_api.url
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
-                            lock.release()
                         else:
                             break
                     
@@ -3332,12 +3329,13 @@ class Desktop_Api(Login):
                             retry += 1
                         elif "Authentication has expired" in r.text or "Logout" in r.text:
                             self.relogin = False
-                            lock.acquire()
                             if self.relogin == True:
                                 retry += 1
                                 continue
                             print(sport)
                             logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                            if '/(S' in self.url:
+                                self.url = self.url.split('/(S')[0]
                             desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                             login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                             if login_result == False:
@@ -3345,17 +3343,16 @@ class Desktop_Api(Login):
                                 retry += 1
                                 continue
                             elif 'Login Too Often' in str(login_result):
-                                logger.info("Login Too Often，等待 60 秒後再重新登入")
-                                time.sleep(60)
+                                logger.info("Login Too Often，等待 30 秒後再重新登入")
+                                time.sleep(30)
                                 retry += 1
                                 continue
                             else:
                                 pass
-                            self.headers = desktop_api.url
+                            self.url = desktop_api.url
                             self.headers = desktop_api.headers
                             retry += 1
                             self.relogin = True
-                            lock.release()
                             #Login().login_api(device='Pc driver', user=self.user, url=self.url,central_account='web.desktop',central_password='1q2w3e4r')
                         else:
                             break
@@ -3439,9 +3436,11 @@ class Desktop_Api(Login):
                         retry += 1
                     elif "Your session has been terminated" in r.text or "Logout" in r.text:
                         logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                        if '/(S' in self.url:
+                            self.url = self.url.split('/(S')[0]
                         desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                         desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
-                        self.headers = desktop_api.url
+                        self.url = desktop_api.url
                         self.headers = desktop_api.headers
                     else:
                         break
@@ -3489,9 +3488,11 @@ class Desktop_Api(Login):
                         retry += 1
                     elif "Your session has been terminated" in r.text or "Logout" in r.text:
                         logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                        if '/(S' in self.url:
+                            self.url = self.url.split('/(S')[0]
                         desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                         desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
-                        self.headers = desktop_api.url
+                        self.url = desktop_api.url
                         self.headers = desktop_api.headers
                     else:
                         break
@@ -3686,7 +3687,9 @@ class Desktop_Api(Login):
                     order_value['LeagueName'] = betting_info['LeagueName']
                     order_value['BettypeName'] = betting_info['BettypeName']
                     order_value['BetTypeId'] = betting_info['BettypeId']
-                    order_value['BetChoice'] = betting_info['bet_team'] 
+                    if '<span' in betting_info['bet_team']:
+                        betting_info['bet_team'] = re.findall('>([a-zA-Z]+)<',betting_info['bet_team'])[0]
+                    order_value['BetChoice'] = betting_info['bet_team']
                     order_value['Odds'] = str(betting_info['odds'])
                 else:
                     order_value['odds_type'] = "Dec"
@@ -3799,11 +3802,12 @@ class Desktop_Api(Login):
                 #        return responce
             elif "Authentication has expired" in r.text :
                 self.relogin = False
-                lock.acquire()
                 if self.relogin == True:
                     retry += 1
                     continue
                 logger.info('Your session has been terminated，等待 30 秒後重新登入')
+                if '/(S' in self.url:
+                    self.url = self.url.split('/(S')[0]
                 desktop_api = Desktop_Api(device='Pc driver',user=self.user,url=self.url,client = '')
                 login_result = desktop_api.desktop_login(central_account='web.desktop' ,central_password='1q2w3e4r')
                 if login_result == False:
@@ -3811,17 +3815,16 @@ class Desktop_Api(Login):
                     retry += 1
                     continue
                 elif 'Login Too Often' in str(login_result):
-                    logger.info("Login Too Often，等待 60 秒後再重新登入")
-                    time.sleep(60)
+                    logger.info("Login Too Often，等待 30 秒後再重新登入")
+                    time.sleep(30)
                     retry += 1
                     continue
                 else:
                     pass
-                self.headers = desktop_api.url
+                self.url = desktop_api.url
                 self.headers = desktop_api.headers
                 retry += 1
                 self.relogin = True
-                lock.release()
             else:
                 time.sleep(1)
                 reget += 1
@@ -3915,7 +3918,7 @@ class Desktop_Api(Login):
         statement_remark_dict = {1 : "Betting Statement" ,3 : "Outstanding Bet", 2 : "Cancelled Bet"}
         try:
             if 'qasb' in self.url :
-                r = self.client_session.post(self.url.replace("10","11")  + '/Statement/AllStatement',headers=self.headers,verify=False)
+                r = self.client_session.get(self.url.replace("10","11")  + '/Statement/AllStatement',headers=self.headers,verify=False)
             else:
                 r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/AllStatement',headers=self.headers,verify=False)
             all_statement_text = r.text
@@ -3933,7 +3936,7 @@ class Desktop_Api(Login):
             for date in date_list:
                 try:
                     if 'qasb' in self.url :
-                        r = self.client_session.post(self.url.replace("10","11")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
+                        r = self.client_session.get(self.url.replace("10","11")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
                     else:
                         r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/BettingStatement?date=%s&datatype=%s'%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark),headers=self.headers,verify=False)
                     get_result_responce = r.status_code
@@ -3948,7 +3951,7 @@ class Desktop_Api(Login):
                 for sport_filter in sport_filter_list:
                     try:
                         if 'qasb' in self.url :
-                            r = self.client_session.post(self.url.replace("10","11")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
+                            r = self.client_session.get(self.url.replace("10","11")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
                         else:
                             r = self.client_session.get(self.url.replace("www","hm")  + '/Statement/DBetList?date=%s&datatype=%s&sporttype=%s&GMT=8 '%(str(time.strftime("%d-%m-%Y", time.strptime(str(date), "%m/%d/%Y"))),statement_remark,sport_filter),headers=self.headers,verify=False)
                         get_result_responce = r.status_code

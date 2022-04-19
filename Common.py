@@ -24,10 +24,13 @@ class Common:
         self.sec_times = sec_times
         self.stop_times = stop_times
 
-    def get_Chrome_version(self):#取得local Chrome version
+    def get_Chrome_version(self,split=True):#取得local Chrome version
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Google\Chrome\BLBeacon')
         version, types = winreg.QueryValueEx(key, 'version')
-        local_version = version.split('.')[0]
+        if split == True:
+            local_version = version.split('.')[0]
+        else:
+            local_version = version
         log.info('local Chrome version : %s'%local_version)
         return local_version
 
@@ -630,5 +633,59 @@ betteam_trans = {
     8105 : {'cs01': 'bo', 'cs02': 'be', 'cs11': 'so', 'cs12': 'se'},
     9088 : {'cs00': '0:0', 'cs01': '0:1', 'cs02': '0:2', 'cs03': '0:3', 'cs04': '0:4', 'cs05': '0:5', 'cs10': '1:0', 'cs11': '1:1', 'cs12': '1:2', 'cs13': '1:3', 'cs14': '1:4', 'cs20': '2:0', 'cs21': '2:1', 'cs22': '2:2', 'cs23': '2:3', 'cs24': '2:4', 'cs30': '3:0', 'cs31': '3:1', 'cs32': '3:2', 'cs33': '3:3', 'cs34': '3:4', 'cs40': '4:0', 'cs41': '4:1', 'cs42': '4:2', 'cs43': '4:3', 'cs44': '4:4', 'cs50': '5:0'},
     468 : {'cs10':'h','cs11':'h','cs12':'h','cs13':'h','cs14':'h','cs01':'a','cs02':'a','cs03':'a','cs04':'a','cs05':'a'},
-    469 : {'cs10':'h','cs11':'h','cs12':'h','cs13':'h','cs14':'h','cs01':'a','cs02':'a','cs03':'a','cs04':'a','cs05':'a'}
+    469 : {'cs10':'h','cs11':'h','cs12':'h','cs13':'h','cs14':'h','cs01':'a','cs02':'a','cs03':'a','cs04':'a','cs05':'a'},
+    9712 : {'odds1a': 'n', 'odds2a': 'y'},
+    9713 : {'odds1a': 'n', 'odds2a': 'y'},
+    9714 : {'odds1a': 'n', 'odds2a': 'y'},
+    9715 : {'odds1a': 'n', 'odds2a': 'y'},
+    9716 : {'odds1a': 'n', 'odds2a': 'y'},
+    9717 : {'odds1a': 'n', 'odds2a': 'y'},
+    9718 : {'odds1a': 'n', 'odds2a': 'y'},
+    9719 : {'odds1a': 'n', 'odds2a': 'y'},
+    9720 : {'odds1a': 'n', 'odds2a': 'y'},
+    9721 : {'odds1a': 'n', 'odds2a': 'y'},
+    9722 : {'odds1a': 'n', 'odds2a': 'y'},
+    9723 : {'odds1a': 'n', 'odds2a': 'y'},
+    9724 : {'odds1a': 'n', 'odds2a': 'y'},
+    9725 : {'odds1a': 'n', 'odds2a': 'y'},
+    9726 : {'odds1a': 'n', 'odds2a': 'y'},
+    9727 : {'odds1a': 'n', 'odds2a': 'y'},
+    9728 : {'odds1a': 'n', 'odds2a': 'y'},
+    9729 : {'odds1a': 'n', 'odds2a': 'y'},
+    9541 : {'odds1a': 'n', 'odds2a': 'y'},
+    9542 : {'odds1a': 'n', 'odds2a': 'y'},
+    9543 : {'odds1a': 'n', 'odds2a': 'y'},
+    9544 : {'odds1a': 'n', 'odds2a': 'y'},
+    9545 : {'odds1a': 'n', 'odds2a': 'y'},
+    9546 : {'odds1a': 'n', 'odds2a': 'y'},
+    9547 : {'odds1a': 'n', 'odds2a': 'y'},
+    9548 : {'odds1a': 'n', 'odds2a': 'y'},
+    9549 : {'odds1a': 'n', 'odds2a': 'y'},
+    9550 : {'odds1a': 'n', 'odds2a': 'y'},
+    9551 : {'odds1a': 'n', 'odds2a': 'y'},
+    9552 : {'odds1a': 'n', 'odds2a': 'y'},
+    9559 : {'odds1a': 'n', 'odds2a': 'y'},
+    9560 : {'odds1a': 'n', 'odds2a': 'y'},
+    9561 : {'odds1a': 'n', 'odds2a': 'y'},
+    9562 : {'odds1a': 'n', 'odds2a': 'y'},
+    9563 : {'odds1a': 'n', 'odds2a': 'y'},
+    9564 : {'odds1a': 'n', 'odds2a': 'y'},
+    9566 : {'odds1a': 'n', 'odds2a': 'y'},
+    9567 : {'odds1a': 'n', 'odds2a': 'y'},
+    9569 : {'odds1a': 'n', 'odds2a': 'y'},
+    9570 : {'odds1a': 'n', 'odds2a': 'y'},
+    9572 : {'odds1a': 'n', 'odds2a': 'y'},
+    9573 : {'odds1a': 'n', 'odds2a': 'y'},
+    9574 : {'odds1a': 'n', 'odds2a': 'y'},
+    9575 : {'odds1a': 'n', 'odds2a': 'y'},
+    9580 : {'odds1a': 'n', 'odds2a': 'y'},
+    9581 : {'odds1a': 'n', 'odds2a': 'y'},
+    9582 : {'odds1a': 'n', 'odds2a': 'y'},
+    9583 : {'odds1a': 'n', 'odds2a': 'y'},
+    9584 : {'odds1a': 'n', 'odds2a': 'y'},
+    9585 : {'odds1a': 'n', 'odds2a': 'y'},
+    9576 : {'odds1a': 'n', 'odds2a': 'y'},
+    9577 : {'odds1a': 'n', 'odds2a': 'y'},
+    9578 : {'odds1a': 'n', 'odds2a': 'y'},
+    9579 : {'odds1a': 'n', 'odds2a': 'y'},
 }

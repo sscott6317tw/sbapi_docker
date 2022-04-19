@@ -21,7 +21,7 @@ AlreadyLogin = ""
 
 url = sys.argv[1]
 '''
-url = 'http://www.athena000.com/'
+url = 'http://qasb5.athena000.com:43100'
 id='autoqa02'
 '''
 pw='1q2w3e4r'
@@ -65,6 +65,7 @@ class desktop_urgent_controller:
 def test_betting(Match_dict='',desktop_api='',sport='',market='',bettype_class='OU',bettype_id='',no_bettype=''): #no_bettype 用來判斷是否有不要重複下注的 Bettype ID
     log.info("開始下注 %s %s 下注"%(sport,market))
     betting_result = desktop_api.DoplaceBet(sport=sport,Match_dict=Match_dict,already_list=[],bettype_id=bettype_id,not_bettype_id=no_bettype)
+    log.info(betting_result)
     return betting_result
 
 def test_parlay_betting(desktop_api,single_sport=True):
@@ -195,7 +196,7 @@ def process_betting(desktop_api,sport,bettype_id_list='',single_sport_parlay='')
                     while reget < reget_int:
                         get_info_result = desktop_api.get_websocket_info(sport = sport,market = market,bet_type=bettype_class,first_get=first_get)
                         first_get = False #用來判斷是否第一次至 Websocket 抓取 Info，要清空給 More 抓取的 Match id list
-                        if get_info_result != 'No Odds' and get_info_result != False and get_info_result != 'No Market':
+                        if get_info_result != 'No Odds' and get_info_result != False and get_info_result != 'No Market' and get_info_result != 'No More Bettype' and get_info_result != None:
                             if market != 'Outright' :
                                 if bettype_id_list == '' or bettype_class == 'more':
                                     bettype_id_list = ['','']
@@ -259,12 +260,12 @@ def process_betting(desktop_api,sport,bettype_id_list='',single_sport_parlay='')
                                             print(bet_result)
                             if retry_betting != True:
                                 break
-                        elif 'No Odds' in str(get_info_result) or 'No Market' in str(get_info_result):
+                        elif 'No Odds' in str(get_info_result) or 'No Market' in str(get_info_result) or 'No More Bettype' in str(get_info_result) or get_info_result == None:
                             reget = 2
                         else:
                             reget += 1
                     if reget == 2:
-                        if get_info_result == None:
+                        if get_info_result == None or 'No More Bettype' in str(get_info_result):
                             bets_dict[sport].append('%s No More BetType%s'%(market,bettype_id))
                         else:
                             if market != 'Outright' :
@@ -713,7 +714,7 @@ def CompareDict(sport,Dict1Key,bet_list_mini_info='',bet_list_full_info='',is_pa
                             else:
                                 pass
                         else:
-                            if "saba" not in str(data1).lower() and "Virtual" in str(data1): #針對字串有 Virtual 做修正，Virtual 為自己加的
+                            if sport in ['Soccer Euro Cup','Soccer Champions Cup','Soccer Asian Cup','Soccer League','Soccer World Cup','Soccer Nation','Virtual Basketball','Virtual Soccer','Virtual Tennis']: #針對字串有 Virtual 做修正，Virtual 為自己加的
                                 if "(Virtual)" in str(data1):
                                     data1 = str(data1).replace("(Virtual)",'')
                                 else:
@@ -721,7 +722,10 @@ def CompareDict(sport,Dict1Key,bet_list_mini_info='',bet_list_full_info='',is_pa
                             if str(data1).replace(" ","") in str(data2).replace(',',''):# 兩個相等 #,刪掉是怕 odds 大於 1000 時，下注不會顯示 ,
                                 same_list.append(key)
                             else:
-                                AssertDict[key] = 'Not same'
+                                if key == 'odds_type' and 'Score Box' in data1:
+                                    same_list.append(key)
+                                else:
+                                    AssertDict[key] = 'Not same'
                     if len(AssertDict) == 0:# AssertDict 為空 代表比對ok
                         allure.attach(str(same_list),"%s 比較資訊皆正確"%compare_bet_list[idx])
                         assert True
@@ -796,15 +800,7 @@ class TestRegression_numbergame:
         bettype_id_list = [85,90] 
         #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Turbo Number Game')
         process_betting(desktop_api,sport='Turbo Number Game',bettype_id_list = bettype_id_list)
-'''
-class TestRegression_turbonumbergame:  
-    def test_turbonumbergame_betting(self):
-        allure.dynamic.story("Betting 測試")
-        bettype_id_list = [85,90] 
-        desktop_api = desktop_urgent_controller(url= url,id='autoqa11',pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Number Game').login()
-        #desktop_api_betting_test = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r',sport='Turbo Number Game')
-        process_betting(desktop_api,sport='Turbo Number Game',bettype_id_list = bettype_id_list)
-'''
+
 class TestRegression_happyfive:  
     def test_happyfive_betting(self):
         allure.dynamic.story("Betting 測試")

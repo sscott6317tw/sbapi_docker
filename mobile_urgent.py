@@ -21,15 +21,15 @@ from Logger import create_logger
 log = create_logger(r"\AutoTest", 'common')
 
 
-'''
+
 url = sys.argv[1]
 id=sys.argv[2]
 pw=sys.argv[3]
 '''
-url = 'http://smart.athena000.com/'
-id='autoqa03'
+url = 'http://qasb3.athena000.com:50005/'
+id='autoqa01'
 pw='1q2w3e4r'
-
+'''
 def odds_check(odds,check_odds_type='MY'):
     if odds == "" or odds is None:
         return False
@@ -210,7 +210,7 @@ class mobile_urgent_controller:
                 self.log.info("打 Show All Odds API 發生錯誤")
                 return "Show All Odds API Fail"
         get_market_result = self.mobile_api.GetMarket(bettype_id,not_bettype_id=no_bettype,urgent_use=True)
-        if "No " in str(get_market_result) :
+        if "No " in str(get_market_result) and type(get_market_result) == str:
             return get_market_result
         elif get_market_result == False :
             self.log.info("打 GetMarket API Fail 發生錯誤")
@@ -333,7 +333,10 @@ class mobile_urgent_controller:
                                 else:
                                     pass
                 except:
-                    BetTypeId = str(re.findall(r"'BettypeName': '(.+)', 'BetChoice",result_info)[0])
+                    try:
+                        BetTypeId = str(re.findall(r"'BettypeName': '(.+)', 'BetChoice",result_info)[0])
+                    except:
+                        BetTypeId = str(re.findall(r"'BetTypeId': '(.+)'",result_info)[0])
                 market = str(re.findall(r"'market' : '(.+)'.+",result_info)[0])
                 with allure.step("下注 %s %s %s " %(self.sport,market,BetTypeId)):
                     allure.attach(result_info,"下注失敗注單")
@@ -429,8 +432,11 @@ class mobile_urgent_controller:
                                         break
                                     else:
                                         if any(fail_info in str(bet_result) for fail_info in  ['closed','HDP/OU','updating odds','Odds has changed','Live score'] ) and retry < 5 and self.sport not in ['Turbo Number Game','Number Game','Baseball']:
-                                            if retry == 3:
-                                                no_bettype = str(re.findall(r"'BetTypeId': (.+), 'BetChoice",bet_result)[0])
+                                            if retry == 5:
+                                                if market == 'Outright':
+                                                    no_bettype = str(re.findall(r"'BetTypeId': '(.+)'",bet_result)[0])
+                                                else:
+                                                    no_bettype = str(re.findall(r"'BetTypeId': (.+), 'BetChoice",bet_result)[0])
                                             self.log.error('Odds Closed Retry Betting')
                                             retry_betting = True
                                         else:
@@ -459,6 +465,7 @@ class mobile_urgent_controller:
                                     self.log.error('%s Api Fail : %s'%(self.sport,str(e)))
                                     bets_dict[self.sport].append('%s Api Fail %s'%(self.sport,market))
                                     betting_result = False 
+                                    retry += 1
         else:
             self.parlay = True
             if single_sport_parlay == True: 

@@ -1447,9 +1447,9 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                             ItemList[{index_key}][Hscore]=0&ItemList[{index_key}][Matchid]={Matchid}&ItemList[{index_key}][betteam]={betteam}&\
                             ItemList[{index_key}][QuickBet]=1:100:10:1&ItemList[{index_key}][ChoiceValue]=&ItemList[{index_key}][home]={Team1}&\
                             ItemList[{index_key}][away]={Team2}&ItemList[{index_key}][gameid]={gameid}&ItemList[{index_key}][isMMR]=0&ItemList[{index_key}][MRPercentage]=&ItemList[{index_key}][GameName]=&\
-                            ItemList[{index_key}][SportName]=C&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
+                            ItemList[{index_key}][SportName]={sportName}&ItemList[{index_key}][IsInPlay]=false&ItemList[{index_key}][SrcOddsInfo]=&ItemList[{index_key}][pty]=1&ItemList[{index_key}][BonusID]=0&ItemList[{index_key}][BonusType]=0&ItemList[{index_key}][sinfo]=53FCX0000&ItemList[{index_key}][hasCashOut]=false\
                             ".format(index_key= index_key, BetTypeId=BetTypeId, oddsid=oddsid ,Matchid = Matchid ,
-                            Team1 =Team1, Team2= Team2,odds=odds  ,gameid = self.gameid,betteam = bet_team,  bet_type = "parlay")
+                            Team1 =Team1, Team2= Team2,odds=odds  ,gameid = self.gameid,betteam = bet_team,  bet_type = "parlay",sportName=self.sport)
                         except Exception as e:
                             logger.error('data_format: %s'%e)
                     else:
@@ -1529,15 +1529,24 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                                         break
                                 self.Hdp1 = ticket_Data['Hdp1']
                                 self.Hdp2 = ticket_Data['Hdp2']
-                                
+                                if len(self.ticket_Data_list) < 3:
+                                    for find_idx,match_info in enumerate(self.Match_dict):
+                                        if ticket_Data['HomeName'] in str(self.Match_dict[match_info]):
+                                            _index_key = find_idx
+                                            break
+                                        else:
+                                            pass
+                                else:
+                                    _index_key = index_key
                                 try:
                                     self.Hscore = ticket_Data['LiveHomeScore']
                                     self.Asocre = ticket_Data['LiveAwayScore']
                                 except:
                                     self.Hscore = '0'
                                     self.Asocre = '0'
+                                data_str = data_str.replace('ItemList[%s][Hscore]=0&'%index_key,'')
                                 parlay_data_format = "ItemList[{index_key}][stake]={bet_stake}&ItemList[{index_key}][Guid]={Guid}&ItemList[{index_key}][Line]={Line}&ItemList[{index_key}][hdp1]={hdp1}&ItemList[{index_key}][hdp2]={hdp2}&ItemList[{index_key}][Hscore]={Hscore}\
-                                &ItemList[{index_key}][Ascore]={Ascore}".format(bet_stake=self.min_stake,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre,index_key= index_key )
+                                &ItemList[{index_key}][Ascore]={Ascore}".format(bet_stake=self.min_stake,Guid =self.guid,  Line =self.Line , hdp1 = self.Hdp1, hdp2 = self.Hdp2, Hscore = self.Hscore ,Ascore = self.Asocre,index_key= _index_key )
                                 parlay_data_str = parlay_data_str + parlay_data_format + '&'
                         except Exception as e:
                             self.error_msg = r.text

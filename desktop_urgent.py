@@ -6,7 +6,7 @@ import time
 import asyncio
 import pytest,allure
 from datetime import datetime
-from Common import Env,NoTestException
+from Common import Env,NoTestException,Common
 from aiowebsocket.converses import AioWebSocket
 import datetime,time
 import json
@@ -851,6 +851,9 @@ def pymain_func(version):
 if __name__ == "__main__":
     from multiprocessing import Process
     multiprocessing.freeze_support()
+
+    get_chrome_info = Common(sec_times='',stop_times='') #先在主程式開始之前更新好 Chromedriver
+    get_chrome_info.get_driver()
 
     #desktop_api = desktop_urgent_controller(url= url,id=id,pw=pw,central_account='web.desktop',central_password='1q2w3e4r').login()
     

@@ -38,8 +38,8 @@ class Login(Common):#取得驗證碼邏輯
         self.download_waiting_time = 3
         self.url = url
         self.cookies = ""# 預設空, 會從驗證碼時,拿取 ASP.NET_SessionId
-        get_chrome_info = Common(sec_times='',stop_times='')
-        self.chrome_version = get_chrome_info.get_Chrome_version(split=False)
+        #get_chrome_info = Common(sec_times='',stop_times='')
+        #self.chrome_version = get_chrome_info.get_Chrome_version(split=False)
     
     def login_api(self, device,user,password =  '1q2w3e4r',url='',client='',central_account='',central_password='',
             site='', queue= ''):
@@ -106,8 +106,8 @@ class Login(Common):#取得驗證碼邏輯
     def assert_validation(self):# 驗證碼的流程, 寫成function, 如果有解析失敗,好retry
         
         while True:
-
-            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/%s Safari/537.36'%self.chrome_version
+            
+            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/%s Safari/537.36'%self.get_Chrome_version(split=False)
             
             r = self.client_session.get(self.url  ,headers= self.headers,verify=False)# 需先拿 session url
             logger.info('url : %s'%r.url  )

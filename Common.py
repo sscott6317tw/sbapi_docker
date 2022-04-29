@@ -72,7 +72,11 @@ class Common:
 
     def get_driver(self):
         local_chrome = self.get_Chrome_version()
-        local_driver = self.get_Driver_version()
+        try:
+            local_driver = self.get_Driver_version()
+        except:
+            log.info('資料夾內無 Chrome driver')
+            local_driver = '0'
         if local_chrome == local_driver:
             log.info('local chrome version 和 driver version 一致 , 無須 下載')
         else:

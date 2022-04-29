@@ -242,15 +242,28 @@ class Env:
         'Yibo': 'http://e7b8mb.pg5688.com/apilogin' , 
         'Xtu168': 'http://g5a1mb.fx9888.com/apilogin' , 
         'Sm88': 'http://x3g8mb.pg5688.com/apilogin', 'FB88CV': 'http://e143mb.258088.net/apilogin',
-        'FB88': 'http://j1f9mb.pg5688.com/apilogin' , '368Cash': 'http://b8d6mb.fx9888.com/apilogin', 
+        'FB88': 'http://j1f9mb.pg5688.com/apilogin' , '368Cash': 'http://b8d6mb.fx9888.com/apilogin',   
         'A1game': 'http://b9p1mb.fx9888.com/apilogin', 'Haifa': 'https://ismart.playbooksb.com/apilogin',
         'Macaubet': 'http://smart.macaubetonline.com/', 'AsiaBet88': 'http://ismart.fun88.com/apilogin',
         'ABcasino': 'http://g110mb.258088.net/apilogin'
         
           },
         
-        'desktop': {'W88' : 'https://alicantemkt.w2sports.com/onelogin.aspx'}
-        }
+        'desktop': {'W88' : 'https://alicantemkt.w2sports.com/onelogin.aspx',
+            'Happy8':'http://mkt.m4080.com/onelogin.aspx',
+            'ECLBET': 'https://p4b0ob.258088.net/onelogin.aspx', '12Bet': 'https://mkt.12bet.com/onelogin.aspx',
+            '11Bet': 'http://l9j7ob.pg5688.com/onelogin.aspx', 'Alog': 'https://prices.dafabet.com/onelogin.aspx',
+            'Ae88': 'https://u022ob.ofje104.com/onelogin.aspx' , '24AVIA':  'https://y530ob.ofje104.com/onelogin.aspx',
+            'Yibo': 'https://e7b8ob.258088.net/onelogin.aspx' , 
+            'Xtu168': 'https://g5a1ob.ofje104.com/onelogin.aspx' , 
+            'Sm88': 'https://x3g8ob.258088.net/onelogin.aspx', 'FB88CV': 'https://e143ob.258088.net/onelogin.aspx',
+            'FB88': 'https://j1f9ob.258088.net/onelogin.aspx' , '368Cash': 'https://b8d6ob.ofje104.com/onelogin.aspx',   
+            'A1game': 'https://b9p1ob.ofje104.com/onelogin.aspx',  'Haifa': 'http://mkt.sbsportplay.net/onelogin.aspx',
+            'Macaubet': 'http://www.macaubetonline.com', 'AsiaBet88': 'https://sports.fahuathuat.com/onelogin.aspx',
+            'ABcasino': 'https://g110ob.258088.net/onelogin.aspx'
+            },
+        } 
+        #'Haifa' & 12Bet opensports 抓不到 Ms2 Url，觀察後發現 MS2 Url 格式皆為 'agnj3.' + self.url.split('.')[1] + '.com'，先寫死
 
     def Allure_Report(self):# 跑完生成allure json檔後, 執行該方式 去生成報告
         popen_path = 'allure generate reports -o allure_report/ --clean'

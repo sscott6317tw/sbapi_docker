@@ -2528,7 +2528,6 @@ class Desktop_Api(Login):
                         parlay_rec = ''
                         while retry < 60:
                             try:
-                                start = time.perf_counter()# 計算請求時間用
                                 mes = await converse.receive()
                                 rec = mes.decode()
                                 #print('{time}-Client receive: {rec}'.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), rec=rec))
@@ -2558,7 +2557,6 @@ class Desktop_Api(Login):
                                         else:
                                             await converse.send('42["subscribe",[["odds",[{"id":"c1","rev":"","sorting":"t","condition":{"sporttype":%s,"marketid":"E","bettype":%s}}]]]]'%(self.game_mapping(sport),[10]))
                                 elif 'oddsid' in str(rec) :
-                                    self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
                                     if "parlay" in self.bet_type :
                                         if parlay_reget < parlay_reget_int:
                                             parlay_reget += 1
@@ -2717,9 +2715,9 @@ class Desktop_Api(Login):
         match_list = []
         if bet_type == 'OU' or 'parlay' in bet_type:
             if 'athena000' in self.url:
-                self.req_url = remote = 'ws://{ms2_url}/socket.io/?gid=12345&token={WS_token}&id={WS_id}&rid=1&EIO=3&transport=websocket'.format(ms2_url=ms2_url,WS_token=WS_token,WS_id=WS_id)
+                remote = 'ws://{ms2_url}/socket.io/?gid=12345&token={WS_token}&id={WS_id}&rid=1&EIO=3&transport=websocket'.format(ms2_url=ms2_url,WS_token=WS_token,WS_id=WS_id)
             else:
-                self.req_url = remote = 'wss://{ms2_url}/socket.io/?gid=12345&token={WS_token}&id={WS_id}&rid=1&EIO=3&transport=websocket'.format(ms2_url=ms2_url,WS_token=WS_token,WS_id=WS_id)
+                remote = 'wss://{ms2_url}/socket.io/?gid=12345&token={WS_token}&id={WS_id}&rid=1&EIO=3&transport=websocket'.format(ms2_url=ms2_url,WS_token=WS_token,WS_id=WS_id)
             get_Ws_info_result = False
             try:
                 betting_info_list = asyncio.new_event_loop().run_until_complete(startup(remote))

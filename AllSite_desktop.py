@@ -19,7 +19,7 @@ class Site_Api(Env):
 
         # key 為 api , value 為一個 二為陣列
         self.response_time_dict = { 'Login':[], 'SetOddsType': [] ,
-         'GetTickets': [] , 'GetWebsocket': [] , 'ProcessBet':[], 
+         'GetTickets': [] , 'ProcessBet':[], 
         'JSResourceApi' : []   ,  'Running_Getbetlistmini': [], 'Running_Getbetlistfull': [],
         'Statement_GetStatement': [] , 'Statement_HistoryStatement': [] , 
              }
@@ -145,18 +145,9 @@ class Site_Api(Env):
                     break
             if retry == 3:
                 assert False
-            response_data = self.return_data(url =  api.req_url , response = 'OK' , 
-            request_time= api.request_time ) 
-
-            self.response_dict['GetWebsocket'] = response_data
-            self.retrun_2d_list(site_name = site , api_name = 'GetWebsocket' , request_time = api.request_time )
         except:
-
             self.log.error(' %s GetWebsocket fail '%self.login_site ) 
-            response_data = self.return_data(url =  api.req_url , response = 'False' ) 
 
-            self.response_dict['GetWebsocket'] = response_data
-            
 
         try:# betting 接口 , 裡面包含  get ticket 的 接口
             result = api.DoplaceBet(sport = 'Soccer' ,Match_dict=get_info_result,bettype_id='1')

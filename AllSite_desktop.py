@@ -37,7 +37,7 @@ class Site_Api(Env):
         new_list = [site_name]
         new_list.append(request_time)# 一個 陣列 [site, 秒數]
         self.response_time_dict[api_name].append(new_list)
-        if float(request_time) > 10:
+        if float(request_time) > 30:
             self.over_loading.append(request_time)
 
     

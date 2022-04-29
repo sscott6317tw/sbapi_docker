@@ -52,7 +52,7 @@ class Site_Api(Env):
                 login_user = 'twqa10'
 
             else:
-                login_user = 'qatest04'
+                login_user = 'qatest03'
 
             self.site_dict[site] = self.response_dict
             login_url = self.api_url_dict[device][site]
@@ -134,23 +134,26 @@ class Site_Api(Env):
             response_data = self.return_data(url =  api.req_url , response = 'False'  ) 
 
             self.response_dict['SetOddsType'] = response_data
-
-        try:
-            retry = 0
-            while retry < 3:
-                get_info_result = api.get_websocket_info(sport = 'Soccer',market = 'Early',bet_type='OU')
-                if get_info_result == False:
-                    retry += 1
-                else:
-                    break
-            if retry == 3:
-                assert False
-        except:
-            self.log.error(' %s GetWebsocket fail '%self.login_site ) 
+        
+        if site == 'W88':
+            try:
+                retry = 0
+                while retry < 3:
+                    self.get_info_result = api.get_websocket_info(sport = 'Soccer',market = 'Early',bet_type='OU')
+                    if self.get_info_result == False:
+                        retry += 1
+                    else:
+                        break
+                if retry == 3:
+                    assert False
+            except:
+                self.log.error(' %s GetWebsocket fail '%self.login_site ) 
+        else:
+            pass
 
 
         try:# betting 接口 , 裡面包含  get ticket 的 接口
-            result = api.DoplaceBet(sport = 'Soccer' ,Match_dict=get_info_result,bettype_id='1')
+            result = api.DoplaceBet(sport = 'Soccer' ,Match_dict=self.get_info_result,bettype_id='1',bet_type='OU')
             
             if result == 'GetTickets False':#get ticket 如果有誤 , 就先不 做betting
                 

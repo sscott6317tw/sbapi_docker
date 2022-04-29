@@ -3081,9 +3081,11 @@ class Desktop_Api(Login):
             #self.stress_dict['response'].append(r.text) 
             return False
 
-    def DoplaceBet(self,sport,Match_dict,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id='',not_bettype_id='',sport_list = ''): #not_bettype_id 是為了不要重複下到同一個 Bettype
+    def DoplaceBet(self,sport,Match_dict,already_list=[],bet_team_index='0',parlay_type='1',times='',bettype_id='',not_bettype_id='',sport_list = '',bet_type=''): #not_bettype_id 是為了不要重複下到同一個 Bettype
         import random
         from random import shuffle
+        if bet_type != '':
+            self.bet_type = bet_type
         '''
         SportName 和 gameid 之後 做動態傳入,目前寫死 
         '''

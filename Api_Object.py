@@ -123,7 +123,7 @@ class Login(Common):#取得驗證碼邏輯
             self.dr.get_screenshot_as_file(self.img_pic)
             for i in range(self.download_waiting_time):
                 if os.path.isfile(self.img_pic):
-                    logger.info('圖片有找到')
+                    logger.info('%s 圖片有找到'%self.img_pic)
                     break
                 else: 
                     logger.info('圖片未找到')

@@ -47,7 +47,7 @@ class Site_Api(Env):
         self.login_fail = ''
         # 登入
         try:
-            if site in ['Tlc','Fun88','Macaubet']:
+            if site in ['Tlc','Fun88','Macaubet','Happy8']:
                 login_user = 'twqa09'
 
             else:

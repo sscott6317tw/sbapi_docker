@@ -30,8 +30,8 @@ class Login(Common):#取得驗證碼邏輯
     def __init__(self,device="",sec_times='',stop_times='',url=''):
         super().__init__(sec_times,stop_times)
         #logger = create_logger(r"\AutoTest", 'test')
-        if device == 'Pc driver' or device == 'desktop':
-            self.dr = self.get_driver()
+        #if device == 'Pc driver' or device == 'desktop':
+            #self.dr = self.get_driver()
         import datetime;
         ts = datetime.datetime.now().timestamp()
         self.img_pic = pathlib.Path(__file__).parent.absolute().__str__() + "%s_login_code.jpg"%str(int(ts))
@@ -106,8 +106,9 @@ class Login(Common):#取得驗證碼邏輯
     def assert_validation(self):# 驗證碼的流程, 寫成function, 如果有解析失敗,好retry
         
         while True:
-            
-            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/%s Safari/537.36'%self.get_Chrome_version(split=False)
+            user_agent = self.dr.execute_script("return navigator.userAgent;")
+            logger.info('user_agent: %s'%user_agent)
+            self.headers['User-Agent'] = user_agent
             
             r = self.client_session.get(self.url  ,headers= self.headers,verify=False)# 需先拿 session url
             logger.info('url : %s'%r.url  )
@@ -2226,6 +2227,7 @@ class Desktop_Api(Login):
         if self.login_type == 'athena':# athena 的登入 方式 , 會須使用 js 加密
             common_js = execjs.compile(self.js_from_file('./login_js/dsektop.js'))# 讀取 login js檔
             cfs_psswd = common_js.call("CFS", '1q2w3e4r')# password先做 前端 CFS 加密
+            self.dr = self.get_driver()
             val = self.assert_validation()# 取得驗證碼
             md5_psswd = self.md(password = cfs_psswd,val = val)# md5 將 Cfs加密 的密碼   跟 驗證碼 做md5
             login_data = "txtUserName={0}&txtPasswd={1}&txtValidCode={2}".format( self.user ,md5_psswd,val)

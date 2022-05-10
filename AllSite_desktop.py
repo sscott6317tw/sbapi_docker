@@ -41,7 +41,7 @@ class Site_Api(Env):
             self.over_loading.append(request_time)
 
     
-    def site_api_betting_process(self , site ,device = 'desktop'):
+    def site_api_betting_process(self , site ,device = 'desktop',index=''):
         self.login_site = '%s - %s'%(device, site)
         self.response_dict = {}
         self.odds_domain = ""
@@ -135,7 +135,7 @@ class Site_Api(Env):
 
             self.response_dict['SetOddsType'] = response_data
         
-        if site == 'W88':
+        if index ==0:
             try:
                 retry = 0
                 while retry < 3:
@@ -353,9 +353,9 @@ time_start = time.time() #開始計時
 login_CheckCentralInfo_site = []
 print('開始執行時間 : %s'%datetime.datetime.now().strftime('%Y-%m-%d/%H:%M:%S') )
 try:
-    for site in site_list:
+    for index, site in enumerate(site_list):
         log.info('site : %s'%site)
-        site_api_test.site_api_betting_process(site = site  )# 執行整個 case流程
+        site_api_test.site_api_betting_process(site = site , index = index  )# 執行整個 case流程
         if site_api_test.login_fail == 'CheckCentralInfo':
             login_CheckCentralInfo_site.append(site)# 先存放 ,在 後面 在刪除
             continue

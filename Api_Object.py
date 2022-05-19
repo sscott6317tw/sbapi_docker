@@ -2481,7 +2481,7 @@ class Desktop_Api(Login):
             else:
                 break
         try:
-            sucess_data = re.findall("<html.+>",r.text)[0]
+            #sucess_data = re.findall("<html.+>",r.text)[0]
             return r.text
         except Exception as e:
             logger.info('desktop OpenSports Api Fail : %s'%str(e))

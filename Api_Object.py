@@ -4160,7 +4160,7 @@ class Desktop_Api(Login):
             for idx,div in enumerate(html.find_all('div')):
                 if div.text == "Betting Statement":
                     history_dict["Betting Statement"].append(html.find_all('div')[idx+1].text)
-            self.error_msg  = '%s'%history_dict
+            self.error_msg  = 'OK'
             return True
         except Exception as e:
             logger.error('Get AllStatement Fail : %s'%e)

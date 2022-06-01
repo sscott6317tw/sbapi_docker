@@ -526,10 +526,10 @@ except Exception as e:
 
 node_type = Common().get_node_type()# 0 local , 1 remote
 
-'''
+
 try:
     con = DataBaseInfo(env_index = int(node_type))
-    con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status  )
+    con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status , Device = "Mobile"  )
     log.info(' All site api insert資料 OK' )
 except Exception as e:
     log.error('All site site_data_insert db 有誤 : %s'%e )
@@ -540,7 +540,7 @@ history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復
 
 con.db_con.close()
 
-'''
+
 
 
 

@@ -2259,7 +2259,11 @@ class Desktop_Api(Login):
         self.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         self.headers['X-Requested-With'] =  'XMLHttpRequest'
         start = time.perf_counter()# 計算請求時間用
-        r = self.client_session.post(self.url  + '/DepositProcessLogin',data=login_data,headers=self.headers,verify=False)
+        try:
+            r = self.client_session.post(self.url  + '/DepositProcessLogin',data=login_data,headers=self.headers,verify=False)
+        except : 
+            self.error_msg = 'Login 接口: %s'%e
+            return self.error_msg
         self.request_time =  '{0:.4f}'.format(time.perf_counter() - start) # 該次 請求的url 時間
         try:
             #if self.login_type == 'athena':# athena 回復格式 有json 

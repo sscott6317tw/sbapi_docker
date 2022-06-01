@@ -239,7 +239,7 @@ class Common:
 class Env:
     def __init__(self):
         self.api_url_dict = { 'mobile': {'W88':  'https://ismart.w2sports.com/apilogin' , 
-        'Happy8':'http://ismart.zjc988.com/apilogin', 
+        'Happy8':'http://ismart.zjc988.com/apilogi', 
         'ECLBET': 'http://p4b0mb.258088.net/apilogin', '12Bet': 'http://ismart.12bet.com/apilogin',
         '11Bet': 'http://l9j7mb.pg5688.com/apilogin', 'Alog': 'https://ismart.dafabet.com/apilogin',
         'Ae88': 'http://u022mb.fx9888.com/apilogin' , '24AVIA':  'http://y530mb.ofje104.com/apilogin',
@@ -264,7 +264,8 @@ class Env:
             'FB88': 'https://j1f9ob.258088.net/onelogin.aspx' , '368Cash': 'https://b8d6ob.ofje104.com/onelogin.aspx',   
             'A1game': 'https://b9p1ob.ofje104.com/onelogin.aspx',  'Haifa': 'http://mkt.sbsportplay.net/onelogin.aspx',
             'Macaubet': 'http://www.macaubetonline.com', 'AsiaBet88': 'https://sports.fahuathuat.com/onelogin.aspx',
-            'ABcasino': 'https://g110ob.258088.net/onelogin.aspx'
+            'ABcasino': 'https://g110ob.258088.net/onelogin.aspx' ,
+            'test': 'http://qasb5.athena000.com:43105'
             },
         } 
         #'Haifa' & 12Bet opensports 抓不到 Ms2 Url，觀察後發現 MS2 Url 格式皆為 'agnj3.' + self.url.split('.')[1] + '.com'，先寫死

@@ -409,7 +409,7 @@ node_type = Common().get_node_type()# 0 local , 1 remote
 
 try:
     con = DataBaseInfo(env_index = int(node_type))
-    con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status , Device = "Desktop"  )
+    con.site_data_insert(   Data =  site_api_test.site_dict , Status = Status , Device = "Desktop" , Site = "AllSite_Sechedule"  )
     log.info(' All site api insert資料 OK' )
 except Exception as e:
     log.error('All site site_data_insert db 有誤 : %s'%e )

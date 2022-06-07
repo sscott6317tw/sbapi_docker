@@ -534,8 +534,8 @@ try:
 except Exception as e:
     log.error('All site site_data_insert db 有誤 : %s'%e )
 #con = DataBaseInfo(env_index = int(node_type))
-con.site_response_insert(  Data =  site_api_test.ava_api_site   )# 平均時間 insert
-history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復資料 , 為 list 裡面包每次 執行 all site 的 query (dict)
+#con.site_response_insert(  Data =  site_api_test.ava_api_site   )# 平均時間 insert
+#history_ava_response = con.site_response_select()# 抓 出 歷史 api 的 回復資料 , 為 list 裡面包每次 執行 all site 的 query (dict)
 
 
 con.db_con.close()

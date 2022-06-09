@@ -19,7 +19,7 @@ from datetime import datetime
 from aiowebsocket.converses import AioWebSocket
 import json
 from urllib.parse import urlparse
-import threading
+import easyocr
 from bs4 import BeautifulSoup
 urllib3.disable_warnings()
 
@@ -76,6 +76,7 @@ class Login(Common):#取得驗證碼邏輯
     def validation(self):
     # 取得圖片
         #logger.info(self.img_pic)
+        '''
         login_code = Image.open(self.img_pic)
         logger.info(login_code)
         # result.show()
@@ -84,6 +85,10 @@ class Login(Common):#取得驗證碼邏輯
         # result.show()
         pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR\\tesseract.exe'
         identify_result = pytesseract.image_to_string(identify_result).strip()
+        '''
+
+        reader = easyocr.Reader(['ch_sim', 'en'],gpu = False) 
+        identify_result = reader.readtext(self.img_pic,detail = 0)[0]
         # 刪除圖片
         try:
             os.remove(self.img_pic)
@@ -307,7 +312,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
             start = time.perf_counter()# 計算請求時間用
             try:
                 r = self.client_session.post(self.url  + '/Login/index',data=login_data,
-                headers=self.headers,verify=False, timeout=10)
+                headers=self.headers,verify=False, timeout=30)
             except:
                 logger.error('url 訪問 超過 10 s')
                 self.error_msg = 'login get error : %s'%e
@@ -368,7 +373,7 @@ class Mobile_Api(Login):# Mobile 街口  ,繼承 Login
                     self.client_session = requests.Session()
                     strss_site_session = self.client_session
 
-                r = self.client_session.get(self.url,verify=False,timeout=10)
+                r = self.client_session.get(self.url,verify=False,timeout=30)
                 session_url = r.url # api site 需先拿到 session url 在做登入
                 #logger.info('登入前 session url: %s'%session_url)
             except Exception as e:
